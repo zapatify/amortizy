@@ -463,7 +463,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 
 ## Author
 
-**Rich** - [@zapatify](https://github.com/zapatify)
+**Rich Zapata** - [@zapatify](https://github.com/zapatify)
 
 ## Acknowledgments
 
