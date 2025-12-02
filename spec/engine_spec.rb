@@ -1,29 +1,31 @@
-require "rspec"
-require "date"
-require "holidays"
-require "spec_helper"
+# frozen_string_literal: true
+
+require 'rspec'
+require 'date'
+require 'holidays'
+require 'spec_helper'
 
 RSpec.describe Amortizy::AmortizationSchedule do
   # Test initialization and validation
 
-  describe "initialization" do
-    it "initializes with valid parameters" do
+  describe 'initialization' do
+    it 'initializes with valid parameters' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
         frequency: :daily
       )
-      expect(schedule.start_date).to eq(Date.parse("2025-11-15"))
+      expect(schedule.start_date).to eq(Date.parse('2025-11-15'))
       expect(schedule.principal).to eq(100_000.00)
       expect(schedule.term_months).to eq(12)
     end
 
-    it "raises error for invalid term months" do
+    it 'raises error for invalid term months' do
       expect do
         Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 100_000.00,
           term_months: 7,
           annual_rate: 17.75,
@@ -32,10 +34,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
       end.to raise_error(ArgumentError, /Term must be/)
     end
 
-    it "raises error for invalid frequency" do
+    it 'raises error for invalid frequency' do
       expect do
         Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 100_000.00,
           term_months: 12,
           annual_rate: 17.75,
@@ -44,10 +46,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
       end.to raise_error(ArgumentError, /Frequency must be/)
     end
 
-    it "raises error for invalid interest method" do
+    it 'raises error for invalid interest method' do
       expect do
         Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 100_000.00,
           term_months: 12,
           annual_rate: 17.75,
@@ -57,10 +59,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
       end.to raise_error(ArgumentError, /Interest method must be/)
     end
 
-    it "raises error for invalid fee treatment" do
+    it 'raises error for invalid fee treatment' do
       expect do
         Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 100_000.00,
           term_months: 12,
           annual_rate: 17.75,
@@ -73,10 +75,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test payment calculations
 
-  describe "payment calculations" do
-    it "calculates correct daily payment count for 6 months" do
+  describe 'payment calculations' do
+    it 'calculates correct daily payment count for 6 months' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -85,9 +87,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(schedule.send(:calculate_total_payments)).to eq(124)
     end
 
-    it "calculates correct daily payment count for 12 months" do
+    it 'calculates correct daily payment count for 12 months' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 10_000.00,
         term_months: 12,
         annual_rate: 15.0,
@@ -96,9 +98,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(schedule.send(:calculate_total_payments)).to eq(248)
     end
 
-    it "calculates correct weekly payment count for 12 months" do
+    it 'calculates correct weekly payment count for 12 months' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 10_000.00,
         term_months: 12,
         annual_rate: 15.0,
@@ -110,10 +112,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test effective principal calculations
 
-  describe "effective principal calculations" do
-    it "includes origination fee in effective principal" do
+  describe 'effective principal calculations' do
+    it 'includes origination fee in effective principal' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
@@ -123,9 +125,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(schedule.send(:effective_principal)).to eq(110_000.00)
     end
 
-    it "adds additional fee to principal when treatment is add_to_principal" do
+    it 'adds additional fee to principal when treatment is add_to_principal' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
@@ -137,9 +139,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(schedule.send(:effective_principal)).to eq(115_000.00)
     end
 
-    it "capitalizes interest during grace period" do
+    it 'capitalizes interest during grace period' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
@@ -155,10 +157,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test schedule generation
 
-  describe "schedule generation" do
-    it "generates correct number of payments" do
+  describe 'schedule generation' do
+    it 'generates correct number of payments' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -170,9 +172,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(regular_payments.length).to eq(124)
     end
 
-    it "fully amortizes the loan" do
+    it 'fully amortizes the loan' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -189,11 +191,11 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test interest methods
 
-  describe "interest methods" do
-    context "simple interest" do
-      it "decreases over time as balance decreases" do
+  describe 'interest methods' do
+    context 'simple interest' do
+      it 'decreases over time as balance decreases' do
         schedule = Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 100_000.00,
           term_months: 12,
           annual_rate: 17.75,
@@ -211,10 +213,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
       end
     end
 
-    context "precomputed interest" do
-      it "remains constant across all payments" do
+    context 'precomputed interest' do
+      it 'remains constant across all payments' do
         schedule = Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 100_000.00,
           term_months: 12,
           annual_rate: 17.75,
@@ -231,9 +233,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
         expect(first_interest).to be_within(0.01).of(last_interest)
       end
 
-      it "costs more than simple interest" do
+      it 'costs more than simple interest' do
         simple_schedule = Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 100_000.00,
           term_months: 12,
           annual_rate: 17.75,
@@ -244,7 +246,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
         )
 
         precomputed_schedule = Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 100_000.00,
           term_months: 12,
           annual_rate: 17.75,
@@ -267,10 +269,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test grace period
 
-  describe "grace period" do
-    it "adds capitalized interest to principal" do
+  describe 'grace period' do
+    it 'adds capitalized interest to principal' do
       without_grace = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
@@ -279,7 +281,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
       )
 
       with_grace = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
@@ -293,9 +295,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(with_grace_principal).to be > without_grace_principal
     end
 
-    it "appears in the schedule" do
+    it 'appears in the schedule' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
@@ -304,7 +306,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
       )
       schedule_data = schedule.send(:generate_schedule_data)
 
-      grace_row = schedule_data.find { |row| row[:payment_type] == "Grace Period" }
+      grace_row = schedule_data.find { |row| row[:payment_type] == 'Grace Period' }
       expect(grace_row).not_to be_nil
       expect(grace_row[:days_in_period]).to eq(5)
     end
@@ -312,10 +314,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test interest-only periods
 
-  describe "interest-only periods" do
-    it "has zero principal payment during interest-only periods" do
+  describe 'interest-only periods' do
+    it 'has zero principal payment during interest-only periods' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -331,17 +333,17 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
       first_10_payments.each do |payment|
         expect(payment[:principal_payment]).to eq(0.0)
-        expect(payment[:payment_type]).to eq("Interest Only")
+        expect(payment[:payment_type]).to eq('Interest Only')
       end
     end
   end
 
   # Test bank days functionality
 
-  describe "bank days functionality" do
-    it "skips weekends when bank_days_only is true" do
+  describe 'bank days functionality' do
+    it 'skips weekends when bank_days_only is true' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-14",
+        start_date: '2025-11-14',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -358,9 +360,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       end
     end
 
-    it "skips federal holidays when bank_days_only is true" do
+    it 'skips federal holidays when bank_days_only is true' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-12-24",
+        start_date: '2025-12-24',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -379,10 +381,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test holiday detection
 
-  describe "holiday detection" do
+  describe 'holiday detection' do
     let(:schedule) do
       Amortizy::AmortizationSchedule.new(
-        start_date: "2025-01-01",
+        start_date: '2025-01-01',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -390,7 +392,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
       )
     end
 
-    it "detects federal holidays" do
+    it 'detects federal holidays' do
       new_years = Date.new(2025, 1, 1)
       expect(schedule.send(:federal_holiday?, new_years)).to be_truthy
 
@@ -398,7 +400,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(schedule.send(:federal_holiday?, regular_day)).to be_falsey
     end
 
-    it "detects observed holidays" do
+    it 'detects observed holidays' do
       observed_friday = Date.new(2026, 7, 3)
       actual_saturday = Date.new(2026, 7, 4)
 
@@ -408,9 +410,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(holidays_friday.empty? && holidays_saturday.empty?).to be_falsey
     end
 
-    it "includes weekend check in bank_day? method" do
+    it 'includes weekend check in bank_day? method' do
       schedule_with_bank_days = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-01-01",
+        start_date: '2025-01-01',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -428,9 +430,9 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(schedule_with_bank_days.send(:bank_day?, weekday)).to be_truthy
     end
 
-    it "skips holidays and weekends with next_bank_day" do
+    it 'skips holidays and weekends with next_bank_day' do
       schedule_with_bank_days = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-12-24",
+        start_date: '2025-12-24',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -449,11 +451,11 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test fee treatments
 
-  describe "fee treatments" do
-    context "distributed fee treatment" do
-      it "adds fee amount to each payment" do
+  describe 'fee treatments' do
+    context 'distributed fee treatment' do
+      it 'adds fee amount to each payment' do
         schedule = Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 10_000.00,
           term_months: 6,
           annual_rate: 15.0,
@@ -472,10 +474,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
       end
     end
 
-    context "separate fee payment" do
-      it "creates a separate fee payment entry" do
+    context 'separate fee payment' do
+      it 'creates a separate fee payment entry' do
         schedule = Amortizy::AmortizationSchedule.new(
-          start_date: "2025-11-15",
+          start_date: '2025-11-15',
           principal: 10_000.00,
           term_months: 6,
           annual_rate: 15.0,
@@ -487,7 +489,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
         schedule_data = schedule.send(:generate_schedule_data)
 
-        fee_payment = schedule_data.find { |row| row[:payment_type] == "Additional Fee Payment" }
+        fee_payment = schedule_data.find { |row| row[:payment_type] == 'Additional Fee Payment' }
         expect(fee_payment).not_to be_nil
         expect(fee_payment[:additional_fee_payment]).to eq(500.00)
       end
@@ -496,26 +498,26 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test CSV generation
 
-  describe "CSV generation" do
-    it "generates a valid CSV file" do
+  describe 'CSV generation' do
+    it 'generates a valid CSV file' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
         frequency: :daily
       )
 
-      csv_path = "test_output.csv"
-      File.delete(csv_path) if File.exist?(csv_path)
+      csv_path = 'test_output.csv'
+      FileUtils.rm_f(csv_path)
 
       schedule.generate(output: :csv, csv_path: csv_path)
 
       expect(File.exist?(csv_path)).to be_truthy
 
       content = File.read(csv_path)
-      expect(content).to include("Payment Number")
-      expect(content).to include("Principal Payment")
+      expect(content).to include('Payment Number')
+      expect(content).to include('Principal Payment')
 
       File.delete(csv_path)
     end
@@ -523,10 +525,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
 
   # Test total payment calculation
 
-  describe "total payment calculation" do
-    it "equals the sum of all payment components" do
+  describe 'total payment calculation' do
+    it 'equals the sum of all payment components' do
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-11-15",
+        start_date: '2025-11-15',
         principal: 10_000.00,
         term_months: 6,
         annual_rate: 15.0,
@@ -552,4 +554,4 @@ RSpec.describe Amortizy::AmortizationSchedule do
 end
 
 puts "\nTo run these tests, use: rspec amortization_spec.rb"
-puts "=" * 80
+puts '=' * 80

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Amortization Schedule Generator
 #
 # Generates comprehensive loan amortization schedules with support for:
@@ -8,16 +10,16 @@
 # - Bank business day calculations (Federal Reserve holidays)
 # - Daily or weekly payment frequencies
 
-require "date"
-require "csv"
-require "holidays"
+require 'date'
+require 'csv'
+require 'holidays'
 
 module Amortizy
   class AmortizationSchedule
     attr_reader :start_date, :principal, :term_months, :annual_rate, :frequency
 
     def initialize(start_date:, principal:, term_months:, annual_rate:, frequency:, origination_fee: 0,
-                   additional_fee: 0, additional_fee_label: "Additional Fee", additional_fee_treatment: :distributed, bank_days_only: false, interest_only_periods: 0, grace_period_days: 0, interest_method: :simple)
+                   additional_fee: 0, additional_fee_label: 'Additional Fee', additional_fee_treatment: :distributed, bank_days_only: false, interest_only_periods: 0, grace_period_days: 0, interest_method: :simple)
       @start_date = Date.parse(start_date.to_s)
       @principal = principal.to_f
       @term_months = term_months.to_i
@@ -44,11 +46,11 @@ module Amortizy
       when :console
         generate_console_output
       when :csv
-        raise ArgumentError, "csv_path required for CSV output" unless csv_path
+        raise ArgumentError, 'csv_path required for CSV output' unless csv_path
 
         generate_csv_output(csv_path)
       else
-        raise ArgumentError, "Output must be :console or :csv"
+        raise ArgumentError, 'Output must be :console or :csv'
       end
     end
 
@@ -57,19 +59,19 @@ module Amortizy
     def validate_frequency!
       return if %i[daily weekly].include?(@frequency)
 
-      raise ArgumentError, "Frequency must be :daily or :weekly"
+      raise ArgumentError, 'Frequency must be :daily or :weekly'
     end
 
     def validate_term_months!
       return if [6, 9, 12, 15, 18].include?(@term_months)
 
-      raise ArgumentError, "Term must be 6, 9, 12, 15, or 18 months"
+      raise ArgumentError, 'Term must be 6, 9, 12, 15, or 18 months'
     end
 
     def validate_fee_treatment!
       return if %i[distributed add_to_principal separate_payment].include?(@additional_fee_treatment)
 
-      raise ArgumentError, "Additional fee treatment must be :distributed, :add_to_principal, or :separate_payment"
+      raise ArgumentError, 'Additional fee treatment must be :distributed, :add_to_principal, or :separate_payment'
     end
 
     def validate_interest_only_periods!
@@ -83,7 +85,7 @@ module Amortizy
     def validate_interest_method!
       return if %i[simple precomputed].include?(@interest_method)
 
-      raise ArgumentError, "Interest method must be :simple or :precomputed"
+      raise ArgumentError, 'Interest method must be :simple or :precomputed'
     end
 
     def calculate_total_payments
@@ -142,7 +144,7 @@ module Amortizy
     end
 
     def grace_period_interest
-      return 0.0 if @grace_period_days == 0
+      return 0.0 if @grace_period_days.zero?
 
       grace_rate = (@annual_rate / 365.0) * @grace_period_days
       initial_principal_with_origination * grace_rate
@@ -160,7 +162,7 @@ module Amortizy
     end
 
     def first_payment_date
-      if @grace_period_days > 0
+      if @grace_period_days.positive?
         grace_end_date = @start_date + @grace_period_days
         next_bank_day(grace_end_date)
       else
@@ -185,11 +187,11 @@ module Amortizy
         days_per_period = calculate_average_days_per_period
         period_rate = (@annual_rate / 365.0) * days_per_period
 
-        base_payment = if period_rate == 0
+        base_payment = if period_rate.zero?
                          effective_principal / principal_payments
                        else
-                         effective_principal * (period_rate * (1 + period_rate)**principal_payments) /
-                           ((1 + period_rate)**principal_payments - 1)
+                         effective_principal * (period_rate * ((1 + period_rate)**principal_payments)) /
+                           (((1 + period_rate)**principal_payments) - 1)
                        end
 
         if @additional_fee_treatment == :distributed
@@ -246,10 +248,10 @@ module Amortizy
       total_payments = calculate_total_payments
       schedule_data = []
 
-      if @grace_period_days > 0
+      if @grace_period_days.positive?
         grace_interest = grace_period_interest
         schedule_data << {
-          payment_number: "Grace",
+          payment_number: 'Grace',
           date: first_payment_date,
           principal_payment: 0.0,
           interest_payment: 0.0,
@@ -258,13 +260,13 @@ module Amortizy
           principal_balance: balance,
           accrued_interest: 0.0,
           total_balance: balance,
-          payment_type: "Grace Period",
+          payment_type: 'Grace Period',
           days_in_period: @grace_period_days,
           grace_interest_capitalized: grace_interest
         }
       end
 
-      if @additional_fee_treatment == :separate_payment && @additional_fee > 0
+      if @additional_fee_treatment == :separate_payment && @additional_fee.positive?
         payment_date = next_payment_date(payment_date)
         schedule_data << {
           payment_number: 0,
@@ -276,7 +278,7 @@ module Amortizy
           principal_balance: balance,
           accrued_interest: 0.0,
           total_balance: balance,
-          payment_type: "Additional Fee Payment",
+          payment_type: 'Additional Fee Payment',
           days_in_period: 0
         }
         previous_payment_date = payment_date
@@ -302,11 +304,11 @@ module Amortizy
 
         if is_interest_only
           principal_payment = 0.0
-          payment_type = "Interest Only"
+          payment_type = 'Interest Only'
         else
           principal_payment = [payment_amount - interest_payment - additional_fee_per_payment, balance].min
           principal_payment = balance if payment_number == total_payments
-          payment_type = "Regular Payment"
+          payment_type = 'Regular Payment'
         end
 
         total_payment = principal_payment + interest_payment + additional_fee_per_payment
@@ -337,10 +339,10 @@ module Amortizy
 
     def generate_console_output
       puts format_header
-      puts "-" * 195
+      puts '-' * 195
 
       generate_schedule_data.each do |row|
-        if row[:payment_type] == "Grace Period"
+        if row[:payment_type] == 'Grace Period'
           puts format_grace_row(
             row[:payment_number],
             row[:date],
@@ -369,36 +371,36 @@ module Amortizy
     end
 
     def generate_csv_output(csv_path)
-      CSV.open(csv_path, "w") do |csv|
+      CSV.open(csv_path, 'w') do |csv|
         csv << [
-          "Payment Number",
-          "Date",
-          "Days in Period",
-          "Principal Payment",
-          "Interest Payment",
-          "Additional Fee Payment",
-          "Total Payment",
-          "Principal Balance Remaining",
-          "Accrued Interest",
-          "Total Balance",
-          "Payment Type",
-          "Grace Interest Capitalized"
+          'Payment Number',
+          'Date',
+          'Days in Period',
+          'Principal Payment',
+          'Interest Payment',
+          'Additional Fee Payment',
+          'Total Payment',
+          'Principal Balance Remaining',
+          'Accrued Interest',
+          'Total Balance',
+          'Payment Type',
+          'Grace Interest Capitalized'
         ]
 
         generate_schedule_data.each do |row|
           csv << [
             row[:payment_number],
-            row[:date].strftime("%Y-%m-%d"),
+            row[:date].strftime('%Y-%m-%d'),
             row[:days_in_period],
-            format("%.2f", row[:principal_payment] || 0),
-            format("%.2f", row[:interest_payment] || 0),
-            format("%.2f", row[:additional_fee_payment] || 0),
-            format("%.2f", row[:total_payment] || 0),
-            format("%.2f", row[:principal_balance]),
-            format("%.2f", row[:accrued_interest] || 0),
-            format("%.2f", row[:total_balance]),
+            format('%.2f', row[:principal_payment] || 0),
+            format('%.2f', row[:interest_payment] || 0),
+            format('%.2f', row[:additional_fee_payment] || 0),
+            format('%.2f', row[:total_payment] || 0),
+            format('%.2f', row[:principal_balance]),
+            format('%.2f', row[:accrued_interest] || 0),
+            format('%.2f', row[:total_balance]),
             row[:payment_type],
-            row[:grace_interest_capitalized] ? format("%.2f", row[:grace_interest_capitalized]) : ""
+            row[:grace_interest_capitalized] ? format('%.2f', row[:grace_interest_capitalized]) : ''
           ]
         end
       end
@@ -407,46 +409,49 @@ module Amortizy
     end
 
     def print_summary
-      puts "\n" + "=" * 195
-      puts "LOAN SUMMARY"
-      puts "=" * 195
-      puts "Loan Start Date: #{@start_date.strftime("%Y-%m-%d")}"
-      puts "First Payment Date: #{first_payment_date.strftime("%Y-%m-%d")}"
+      puts "\n#{'=' * 195}"
+      puts 'LOAN SUMMARY'
+      puts '=' * 195
+      puts "Loan Start Date: #{@start_date.strftime('%Y-%m-%d')}"
+      puts "First Payment Date: #{first_payment_date.strftime('%Y-%m-%d')}"
       puts "Term: #{@term_months} months"
       puts "Payment Frequency: #{@frequency.to_s.capitalize}"
       puts "Grace Period: #{@grace_period_days} days"
 
-      puts "Grace Period Interest (Capitalized): $#{format("%.2f", grace_period_interest)}" if @grace_period_days > 0
+      if @grace_period_days.positive?
+        puts "Grace Period Interest (Capitalized): $#{format('%.2f',
+                                                             grace_period_interest)}"
+      end
 
-      puts "\nOriginal Principal: $#{format("%.2f", @principal)}"
-      puts "Origination Fee: $#{format("%.2f", @origination_fee)} (added to principal)"
-      puts "Additional Fee: $#{format("%.2f", @additional_fee)}"
-      puts "#{@additional_fee_label} Treatment: #{@additional_fee_treatment.to_s.split("_").map(&:capitalize).join(" ")}"
+      puts "\nOriginal Principal: $#{format('%.2f', @principal)}"
+      puts "Origination Fee: $#{format('%.2f', @origination_fee)} (added to principal)"
+      puts "Additional Fee: $#{format('%.2f', @additional_fee)}"
+      puts "#{@additional_fee_label} Treatment: #{@additional_fee_treatment.to_s.split('_').map(&:capitalize).join(' ')}"
       puts "Bank Days Only: #{@bank_days_only}"
       puts "Interest-Only Periods: #{@interest_only_periods}"
       puts "Interest Method: #{@interest_method.to_s.capitalize}"
 
-      puts "\nPrincipal after Origination Fee: $#{format("%.2f", initial_principal_with_origination)}"
+      puts "\nPrincipal after Origination Fee: $#{format('%.2f', initial_principal_with_origination)}"
 
-      if @grace_period_days > 0
-        puts "Principal after Grace Period (with capitalized interest): $#{format("%.2f",
+      if @grace_period_days.positive?
+        puts "Principal after Grace Period (with capitalized interest): $#{format('%.2f',
                                                                                   initial_principal_with_origination + grace_period_interest)}"
       end
 
       case @additional_fee_treatment
       when :add_to_principal
-        puts "Total Principal (with all fees): $#{format("%.2f", effective_principal)}"
+        puts "Total Principal (with all fees): $#{format('%.2f', effective_principal)}"
       when :distributed
-        puts "#{@additional_fee_label} per payment: $#{format("%.2f", @additional_fee / calculate_total_payments)}"
+        puts "#{@additional_fee_label} per payment: $#{format('%.2f', @additional_fee / calculate_total_payments)}"
       when :separate_payment
         puts "#{@additional_fee_label} collected as separate payment"
       end
 
       if @interest_method == :precomputed
         puts "\nPrecomputed Interest Calculation:"
-        puts "  Estimated Total Loan Days: #{format("%.0f", estimate_total_loan_days)}"
-        puts "  Total Precomputed Interest: $#{format("%.2f", calculate_precomputed_total_interest)}"
-        puts "  Interest per Payment: $#{format("%.2f", precomputed_interest_per_payment)}"
+        puts "  Estimated Total Loan Days: #{format('%.0f', estimate_total_loan_days)}"
+        puts "  Total Precomputed Interest: $#{format('%.2f', calculate_precomputed_total_interest)}"
+        puts "  Interest per Payment: $#{format('%.2f', precomputed_interest_per_payment)}"
       end
 
       schedule_data = generate_schedule_data
@@ -454,55 +459,53 @@ module Amortizy
       total_additional_fees = schedule_data.sum { |row| row[:additional_fee_payment] || 0 }
       total_paid = effective_principal + total_interest + (@additional_fee_treatment == :separate_payment ? @additional_fee : 0)
 
-      puts "\nTotal Interest Paid (during payments): $#{format("%.2f", total_interest)}"
-      if @grace_period_days > 0
-        puts "Total Interest Including Grace Period: $#{format("%.2f", total_interest + grace_period_interest)}"
-      end
-      puts "Total #{@additional_fee_label} Paid: $#{format("%.2f", total_additional_fees)}"
-      puts "Total Amount Paid: $#{format("%.2f", total_paid)}"
-      puts "=" * 195
+      puts "\nTotal Interest Paid (during payments): $#{format('%.2f', total_interest)}"
+      puts "Total Interest Including Grace Period: $#{format('%.2f', total_interest + grace_period_interest)}" if @grace_period_days.positive?
+      puts "Total #{@additional_fee_label} Paid: $#{format('%.2f', total_additional_fees)}"
+      puts "Total Amount Paid: $#{format('%.2f', total_paid)}"
+      puts '=' * 195
     end
 
     def format_header
       format(
-        "%-8s %-12s %-8s %15s %15s %18s %18s %20s %18s %18s %20s",
-        "Payment",
-        "Date",
-        "Days",
-        "Principal Pmt",
-        "Interest Pmt",
+        '%-8s %-12s %-8s %15s %15s %18s %18s %20s %18s %18s %20s',
+        'Payment',
+        'Date',
+        'Days',
+        'Principal Pmt',
+        'Interest Pmt',
         @additional_fee_label,
-        "Total Payment",
-        "Principal Balance",
-        "Accrued Interest",
-        "Total Balance",
-        "Payment Type"
+        'Total Payment',
+        'Principal Balance',
+        'Accrued Interest',
+        'Total Balance',
+        'Payment Type'
       )
     end
 
     def format_grace_row(_payment_num, date, grace_interest, principal_balance, days)
       format(
-        "%-8s %-12s %-8d %15s %15s %18s %18s %20.2f %18s %18.2f %20s",
-        "Grace",
-        date.strftime("%Y-%m-%d"),
+        '%-8s %-12s %-8d %15s %15s %18s %18s %20.2f %18s %18.2f %20s',
+        'Grace',
+        date.strftime('%Y-%m-%d'),
         days,
-        "---",
-        "+#{format("%.2f", grace_interest)}",
-        "---",
-        "0.00",
+        '---',
+        "+#{format('%.2f', grace_interest)}",
+        '---',
+        '0.00',
         principal_balance,
-        "---",
+        '---',
         principal_balance,
-        "Grace Period"
+        'Grace Period'
       )
     end
 
     def format_row(payment_num, date, principal_pmt, interest_pmt, additional_fee_pmt, total_pmt, principal_balance,
                    accrued_interest, total_balance, payment_type, days)
       format(
-        "%-8s %-12s %-8d %15.2f %15.2f %18.2f %18.2f %20.2f %18.2f %18.2f %20s",
-        payment_num == 0 ? "Fee" : payment_num.to_s,
-        date.strftime("%Y-%m-%d"),
+        '%-8s %-12s %-8d %15.2f %15.2f %18.2f %18.2f %20.2f %18.2f %18.2f %20s',
+        payment_num.zero? ? 'Fee' : payment_num.to_s,
+        date.strftime('%Y-%m-%d'),
         days,
         principal_pmt,
         interest_pmt,
