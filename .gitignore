@@ -71,3 +71,4 @@ coverage/
 
 # CSV output files (from testing)
 *.csv
+Gemfile.lock
