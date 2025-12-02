@@ -86,7 +86,7 @@ DEPENDENCIES
   irb
   rake (~> 13.0)
   rspec (~> 3.0)
-  rubocop (~> 1.21)
+  rubocop (~> 1.21, ~> 1.0)
 
 BUNDLED WITH
    2.7.2

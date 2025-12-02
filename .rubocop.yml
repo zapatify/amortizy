@@ -1,8 +1,28 @@
 AllCops:
-  TargetRubyVersion: 3.2
+  TargetRubyVersion: 2.7
+    NewCops: enable
+    Exclude:
+      - 'vendor/**/*'
+      - 'bin/**/*'
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
 Style/StringLiteralsInInterpolation:
   EnforcedStyle: double_quotes
+
+# Disable these overly strict rules. I'm not going to do this for v1
+Style/Documentation:
+  Enabled: false  # Don't require class documentation comments
+
+Metrics/MethodLength:
+  Max: 25  # Allow longer methods
+
+Metrics/AbcSize:
+  Max: 20  # Allow more complex methods
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Layout/LineLength:
+  Max: 120  # Allow longer lines
