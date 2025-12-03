@@ -509,7 +509,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
       )
 
       csv_path = 'test_output.csv'
-      FileUtils.rm_f(csv_path)
+      File.delete(csv_path) if File.exist?(csv_path)
 
       schedule.generate(output: :csv, csv_path: csv_path)
 
@@ -519,7 +519,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(content).to include('Payment Number')
       expect(content).to include('Principal Payment')
 
-      File.delete(csv_path)
+      File.delete(csv_path) if File.exist?(csv_path)
     end
   end
 
