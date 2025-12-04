@@ -73,7 +73,8 @@ schedule = Amortizy::AmortizationSchedule.new(
   annual_rate: 17.75,
   frequency: :daily,
   origination_fee: 10000.00,           # Added to principal
-  additional_fee: 2500.00,             # Processing fee
+  additional_fee: 2500.00,             # Additional fee
+  additional_fee_label: "Processing Fee" # Additional fee label Example: Processing fee
   additional_fee_treatment: :distributed, # Options: :distributed, :add_to_principal, :separate_payment
   bank_days_only: true,                # Skip weekends & holidays
   interest_only_periods: 10,           # First 10 payments are interest-only
