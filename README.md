@@ -1,6 +1,6 @@
 # Amortizy
 
-[![Gem Version](https://badge.fury.io/rb/amortizy.svg)](https://badge.fury.io/rb/amortizy)
+[![Gem Version](https://badge.fury.io/rb/amortizy.svg)](https://rubygems.org/gems/amortizy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A comprehensive Ruby library for generating professional loan amortization schedules with advanced features including grace periods, interest-only payments, federal bank holidays, and multiple interest calculation methods.
