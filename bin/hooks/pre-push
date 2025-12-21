@@ -1,0 +1,33 @@
+#!/bin/bash
+
+echo "🧪 Running pre-push checks..."
+echo ""
+
+# Run RSpec tests
+echo "📝 Running tests..."
+bundle exec rspec
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Tests failed! Push aborted."
+  echo "Fix the failing tests before pushing."
+  exit 1
+fi
+
+echo ""
+echo "✅ All tests passed!"
+echo ""
+
+# Run RuboCop
+echo "🔍 Running RuboCop..."
+bundle exec rubocop
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ RuboCop found issues! Push aborted."
+  echo "Fix the offenses with: bundle exec rubocop -a"
+  exit 1
+fi
+
+echo ""
+echo "✅ RuboCop passed!"
+echo ""
+echo "🚀 All checks passed! Pushing..."

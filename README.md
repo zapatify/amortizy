@@ -384,8 +384,31 @@ After checking out the repo, run:
 # Install dependencies
 bundle install
 
+# Install git hooks
+ln -sf ../../bin/hooks/pre-push .git/hooks/pre-push
+
 # Run tests
 bundle exec rspec
+
+# Run linter
+bundle exec rubocop
+
+
+### Git Hook Features
+
+✅ Runs tests before every push
+✅ Runs RuboCop before every push  
+✅ Prevents bad code from being pushed
+✅ Shows clear error messages
+✅ Can be shared with other developers
+
+---
+
+## Summary
+
+1. **Grace period bank day adjustment**: ✅ Already working! Just added tests.
+2. **Pre-push hook**: ✅ Created in `.git/hooks/pre-push` and `bin/hooks/pre-push`
+
 
 # Run interactive console
 bin/console
