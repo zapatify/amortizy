@@ -12,7 +12,7 @@ Perfect for financial applications, lending platforms, and loan calculators.
 - **Multiple payment frequencies**: Daily or weekly payments
 - **Flexible loan terms**: 6, 9, 12, 15, or 18 month terms
 - **Interest calculation methods**: Simple (accrued daily) or precomputed (fixed per payment)
-- **Grace periods**: Automatic interest capitalization during grace periods
+- **Grace periods**: Grace periods before first payment (interest accrues and advances to 1st bank date)
 - **Interest-only periods**: Configure initial interest-only payment phases
 - **Fee handling**: Origination fees and additional fees with three treatment options
 - **Bank day calculations**: Automatically skip weekends and US Federal Reserve holidays
