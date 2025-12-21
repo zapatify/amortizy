@@ -552,49 +552,47 @@ RSpec.describe Amortizy::AmortizationSchedule do
       end
     end
   end
-  
+
   describe 'grace periods' do
     # ... existing tests ...
-    
+
     it 'advances grace period end to next bank day when it falls on weekend' do
       # Grace period ends on Saturday Dec 27, 2025
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-12-24",  # Wednesday
-        principal: 100000.00,
+        start_date: '2025-12-24',  # Wednesday
+        principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
         frequency: :daily,
         grace_period_days: 3,      # Ends on Saturday 12/27
         bank_days_only: true
       )
-      
+
       first_payment = schedule.send(:first_payment_date)
-      
+
       # Should advance to Monday 12/29 (skipping weekend)
       expect(first_payment).to eq(Date.new(2025, 12, 29))
       expect(first_payment.monday?).to be_truthy
     end
-    
+
     it 'advances grace period end to next bank day when it falls on holiday' do
       # Grace period ends on Christmas (12/25/2025 - Thursday)
       schedule = Amortizy::AmortizationSchedule.new(
-        start_date: "2025-12-22",  # Monday
-        principal: 100000.00,
+        start_date: '2025-12-22',  # Monday
+        principal: 100_000.00,
         term_months: 12,
         annual_rate: 17.75,
         frequency: :daily,
         grace_period_days: 3,      # Ends on Christmas 12/25
         bank_days_only: true
       )
-      
+
       first_payment = schedule.send(:first_payment_date)
-      
+
       # Should advance to Friday 12/26 (day after Christmas)
       expect(first_payment).to eq(Date.new(2025, 12, 26))
     end
   end
-
-
 end
 
 puts "\nTo run these tests, use: rspec amortization_spec.rb"
