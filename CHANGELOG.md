@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-04-20
+
+### Added
+
+#### Commercial Financing Disclosure Module
+- **`Amortizy::Disclosure`** - new class that computes disclosure data elements for
+  closed-end commercial loan transactions per California SB 1235 (Title 10, Chapter 3)
+- **APR calculation** using the actuarial method per Appendix J of Regulation Z
+  (12 CFR Part 1026, section 940) with Newton-Raphson solver and bisection fallback
+- **Finance charge** - total dollar cost of financing including interest and all fees (section 943)
+- **Amount financed** - principal adjusted for prepaid finance charges (section 900(a)(1)(B))
+- **Recipient funds** - net amount disbursed to borrower after third-party payoffs (section 900(a)(26))
+- **Term display** - formatted per regulation: days for terms <= 1 year,
+  years/months for longer terms (section 901(a)(4))
+- **Average monthly cost** - automatically computed for non-monthly payment frequencies (section 910(a)(12))
+- **Prepayment information** - structured data for prepayment penalty disclosures (section 910(a)(8-10))
+- **`#to_h`** - flat hash of all computed values
+- **`#to_labeled_h`** - hash with regulation-correct labels from section 910
+
+#### Design Notes
+- Disclosure class wraps an existing `AmortizationSchedule` — no changes to the engine API
+- Values are jurisdiction-agnostic: computed per the most stringent methodology (California),
+  usable for any state's commercial financing disclosure requirements
+- Origination fee is treated as a prepaid finance charge by default
+- APR rounded to nearest 10 basis points per section 901(a)(5)
+- APR accuracy within 1/8 of 1 percentage point tolerance per section 955
+
 ## [2.0.0] - 2026-04-19
 
 ### Added
@@ -127,7 +154,6 @@ bundle update amortizy
 
 Potential features for future releases:
 
-- Additional payment frequencies (monthly, bi-weekly)
 - More interest calculation methods
 - Support for additional holiday calendars (state, international)
 - Balloon payment support

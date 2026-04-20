@@ -16,7 +16,8 @@ require 'holidays'
 
 module Amortizy
   class AmortizationSchedule
-    attr_reader :start_date, :principal, :term_months, :annual_rate, :frequency, :additional_fee_label
+    attr_reader :start_date, :principal, :term_months, :annual_rate, :frequency, :additional_fee_label,
+                :origination_fee, :additional_fee, :additional_fee_treatment
 
     def initialize(start_date:, principal:, annual_rate:, frequency:, term_months: nil, num_payments: nil,
                    origination_fee: 0, additional_fee: 0, additional_fee_label: 'Additional Fee',
