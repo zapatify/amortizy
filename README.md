@@ -3,21 +3,23 @@
 [![Gem Version](https://img.shields.io/gem/v/amortizy.svg?style=flat)](https://rubygems.org/gems/amortizy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A comprehensive Ruby library for generating professional loan amortization schedules with advanced features including grace periods, interest-only payments, federal bank holidays, and multiple interest calculation methods.
+A Ruby gem for generating loan amortization schedules. Supports monthly, bi-weekly, weekly, and daily payment frequencies with grace periods, interest-only payments, federal bank holidays, and multiple interest calculation methods.
 
 Perfect for financial applications, lending platforms, and loan calculators.
 
 ## Features
 
-- **Multiple payment frequencies**: Daily or weekly payments
-- **Flexible loan terms**: 6, 9, 12, 15, or 18 month terms
+- **Multiple payment frequencies**: Monthly, bi-weekly, weekly, or daily payments
+- **Flexible loan terms**: Any term length in months, or specify an exact payment count
+- **Dual input model**: Provide `term_months` (gem calculates payment count) or `num_payments` (you specify exactly how many)
 - **Interest calculation methods**: Simple (accrued daily) or precomputed (fixed per payment)
-- **Grace periods**: Grace periods before first payment (interest accrues and advances to 1st bank date)
+- **Grace periods**: Grace periods before first payment (interest accrues and capitalizes)
 - **Interest-only periods**: Configure initial interest-only payment phases
 - **Fee handling**: Origination fees and additional fees with three treatment options
 - **Bank day calculations**: Automatically skip weekends and US Federal Reserve holidays
 - **Multiple output formats**: Console display or CSV export
-- **Comprehensive testing**: 29 RSpec tests with 100% pass rate
+- **Public API**: Programmatic access to schedule data, summaries, and totals
+- **Testing**: 70 RSpec tests
 
 ## Installation
 
@@ -41,48 +43,286 @@ gem install amortizy
 
 ## Quick Start
 
-### Basic Example
+### Monthly Loan (most common)
 
 ```ruby
 require 'amortizy'
 
 schedule = Amortizy::AmortizationSchedule.new(
-  start_date: "2025-11-15",
-  principal: 100000.00,
+  start_date: "2026-01-15",
+  principal: 100_000.00,
   term_months: 12,
-  annual_rate: 17.75,
-  frequency: :daily
+  annual_rate: 10.0,
+  frequency: :monthly
 )
 
 # Display in console
 schedule.generate
 
+# Access data programmatically
+schedule.summary          # => { start_date:, end_date:, principal:, total_payments:, ... }
+schedule.payment_amount   # => 8791.59
+schedule.total_interest   # => 5499.06
+schedule.total_paid       # => 105499.06
+schedule.end_date         # => #<Date: 2027-01-15>
+
+# Get the full schedule as an array of hashes
+schedule.schedule.each do |payment|
+  puts "#{payment[:date]} - $#{'%.2f' % payment[:total_payment]}"
+end
+
 # Generate CSV file
 schedule.generate(output: :csv, csv_path: "schedule.csv")
+```
+
+### Specify Exact Payment Count
+
+Instead of a term length, tell the gem exactly how many payments you want:
+
+```ruby
+schedule = Amortizy::AmortizationSchedule.new(
+  start_date: "2026-01-15",
+  principal: 50_000.00,
+  num_payments: 26,
+  annual_rate: 12.0,
+  frequency: :biweekly
+)
+
+schedule.schedule.length    # => 26
+schedule.end_date           # => the date of the 26th payment
+schedule.term_months        # => nil (not applicable when using num_payments)
 ```
 
 ### Advanced Example with All Features
 
 ```ruby
-require 'amortizy'
-
 schedule = Amortizy::AmortizationSchedule.new(
-  start_date: "2025-11-15",
-  principal: 100000.00,
+  start_date: "2026-01-15",
+  principal: 100_000.00,
   term_months: 12,
   annual_rate: 17.75,
-  frequency: :daily,
-  origination_fee: 10000.00,           # Added to principal
-  additional_fee: 2500.00,             # Additional fee
-  additional_fee_label: "Processing Fee" # Additional fee label Example: Processing fee
-  additional_fee_treatment: :distributed, # Options: :distributed, :add_to_principal, :separate_payment
-  bank_days_only: true,                # Skip weekends & holidays
-  interest_only_periods: 10,           # First 10 payments are interest-only
-  grace_period_days: 3,                # 3-day grace period
-  interest_method: :simple             # Options: :simple, :precomputed
+  frequency: :monthly,
+  origination_fee: 10_000.00,
+  additional_fee: 2_500.00,
+  additional_fee_label: "Processing Fee",
+  additional_fee_treatment: :distributed,
+  bank_days_only: true,
+  interest_only_periods: 3,
+  grace_period_days: 3,
+  interest_method: :simple
 )
 
 schedule.generate
+```
+
+## API Reference
+
+### Initialization Parameters
+
+| Parameter | Type | Required | Default | Options | Description |
+|-----------|------|----------|---------|---------|-------------|
+| `start_date` | String/Date | Yes | - | YYYY-MM-DD | Loan start date |
+| `principal` | Float | Yes | - | > 0 | Loan principal amount |
+| `term_months` | Integer | One of* | - | Any positive integer | Loan term in months |
+| `num_payments` | Integer | One of* | - | Any positive integer | Exact number of payments |
+| `annual_rate` | Float | Yes | - | - | Annual interest rate (%) |
+| `frequency` | Symbol | Yes | - | `:monthly`, `:biweekly`, `:weekly`, `:daily` | Payment frequency |
+| `origination_fee` | Float | No | 0 | - | Fee added to principal |
+| `additional_fee` | Float | No | 0 | - | Additional processing fee |
+| `additional_fee_label` | String | No | "Additional Fee" | - | Label for additional fee |
+| `additional_fee_treatment` | Symbol | No | `:distributed` | `:distributed`, `:add_to_principal`, `:separate_payment` | How to handle additional fee |
+| `bank_days_only` | Boolean | No | false | - | Skip weekends and holidays |
+| `interest_only_periods` | Integer | No | 0 | - | Number of interest-only payments |
+| `grace_period_days` | Integer | No | 0 | - | Days before first payment |
+| `interest_method` | Symbol | No | `:simple` | `:simple`, `:precomputed` | Interest calculation method |
+
+*Provide either `term_months` or `num_payments`, not both.
+
+### Public Methods
+
+#### `#generate(output: :console, csv_path: nil)`
+
+Render the schedule to console or CSV file.
+
+```ruby
+schedule.generate                                          # console output
+schedule.generate(output: :csv, csv_path: "schedule.csv")  # CSV file
+```
+
+#### `#schedule`
+
+Returns a frozen array of payment hashes. Each hash contains:
+
+```ruby
+{
+  payment_number: 1,
+  date: #<Date>,
+  principal_payment: 8302.48,
+  interest_payment: 489.11,
+  additional_fee_payment: 0.0,
+  total_payment: 8791.59,
+  principal_balance: 91697.52,
+  accrued_interest: 489.11,
+  total_balance: 92186.63,
+  payment_type: "Regular Payment",
+  days_in_period: 29
+}
+```
+
+#### `#summary`
+
+Returns a hash with loan totals:
+
+```ruby
+{
+  start_date: #<Date>,
+  end_date: #<Date>,
+  principal: 100000.0,
+  total_payments: 12,
+  frequency: :monthly,
+  annual_rate: 10.0,
+  payment_amount: 8791.59,
+  total_interest: 5499.06,
+  total_paid: 105499.06
+}
+```
+
+#### Convenience Methods
+
+| Method | Returns |
+|--------|---------|
+| `#end_date` | Date of the last payment |
+| `#total_interest` | Sum of all interest payments |
+| `#total_paid` | Sum of all payments |
+| `#payment_amount` | Regular payment amount |
+
+## Payment Frequencies
+
+### Monthly (`:monthly`)
+
+Payments on the same day each month. If the start date is the 31st, payments on shorter months use the last day of the month (e.g., Jan 31 -> Feb 28 -> Mar 28).
+
+### Bi-weekly (`:biweekly`)
+
+Payments every 14 days. Common for payroll-aligned loan repayment.
+
+### Weekly (`:weekly`)
+
+Payments every 7 days.
+
+### Daily (`:daily`)
+
+Payments every day. When combined with `bank_days_only: true`, payments skip weekends and federal holidays.
+
+## Fee Treatment Options
+
+### 1. Distributed (`:distributed`)
+The fee is spread evenly across all payments.
+
+**Best for:** Keeping individual payments manageable while recovering fees over time
+
+### 2. Add to Principal (`:add_to_principal`)
+The fee is added to the loan principal upfront, increasing the base amount financed.
+
+**Best for:** Rolling all costs into the loan amount
+
+### 3. Separate Payment (`:separate_payment`)
+The fee is collected as a separate first payment before regular amortization begins.
+
+**Best for:** Collecting fees upfront separately from the loan repayment
+
+## Interest Calculation Methods
+
+### Simple Interest (`:simple`)
+
+Interest accrues daily on the remaining principal balance. As you pay down the principal, interest payments decrease over time.
+
+**Formula:** Daily interest = (Principal Balance x Annual Rate) / 365
+
+**Best for:** Traditional amortizing loans, consumer loans
+
+### Precomputed Interest (`:precomputed`)
+
+Total interest is calculated upfront based on the original principal and divided equally across all payments. Interest per payment stays constant regardless of principal reduction.
+
+**Best for:** Fixed payment structures, certain consumer loan types
+
+## Federal Bank Holidays
+
+When `bank_days_only: true`, the schedule automatically skips weekends and US Federal Reserve holidays:
+
+- New Year's Day, MLK Jr. Day, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Columbus Day, Veterans Day, Thanksgiving, Christmas
+
+Weekend observation rules are handled automatically by the `holidays` gem.
+
+## Usage Examples
+
+### 30-Year Mortgage
+
+```ruby
+schedule = Amortizy::AmortizationSchedule.new(
+  start_date: "2026-01-15",
+  principal: 350_000.00,
+  term_months: 360,
+  annual_rate: 6.5,
+  frequency: :monthly
+)
+
+puts "Monthly payment: $#{'%.2f' % schedule.payment_amount}"
+puts "Total interest: $#{'%.2f' % schedule.total_interest}"
+```
+
+### Weekly Loan with Grace Period
+
+```ruby
+schedule = Amortizy::AmortizationSchedule.new(
+  start_date: "2026-01-15",
+  principal: 75_000.00,
+  term_months: 12,
+  annual_rate: 15.0,
+  frequency: :weekly,
+  grace_period_days: 7
+)
+
+schedule.generate
+```
+
+### Interest-Only with Bank Days
+
+```ruby
+schedule = Amortizy::AmortizationSchedule.new(
+  start_date: "2026-01-15",
+  principal: 100_000.00,
+  term_months: 18,
+  annual_rate: 10.0,
+  frequency: :weekly,
+  interest_only_periods: 8,
+  bank_days_only: true
+)
+
+schedule.generate
+```
+
+### Complex Commercial Loan
+
+```ruby
+schedule = Amortizy::AmortizationSchedule.new(
+  start_date: "2026-01-15",
+  principal: 250_000.00,
+  term_months: 18,
+  annual_rate: 14.5,
+  frequency: :daily,
+  origination_fee: 25_000.00,
+  additional_fee: 5_000.00,
+  additional_fee_label: "Processing Fee",
+  additional_fee_treatment: :distributed,
+  bank_days_only: true,
+  interest_only_periods: 20,
+  grace_period_days: 5,
+  interest_method: :simple
+)
+
+schedule.generate(output: :csv, csv_path: "commercial_loan.csv")
 ```
 
 ## Command Line Interface
@@ -98,282 +338,9 @@ The CLI provides:
 2. Enter parameters manually with interactive prompts
 3. Automatic CSV generation option
 
-## API Reference
-
-### Initialization Parameters
-
-| Parameter | Type | Required | Default | Options | Description |
-|-----------|------|----------|---------|---------|-------------|
-| `start_date` | String/Date | Yes | - | YYYY-MM-DD | Loan start date |
-| `principal` | Float | Yes | - | - | Loan principal amount |
-| `term_months` | Integer | Yes | - | 6, 9, 12, 15, 18 | Loan term in months |
-| `annual_rate` | Float | Yes | - | - | Annual interest rate (%) |
-| `frequency` | Symbol | Yes | - | `:daily`, `:weekly` | Payment frequency |
-| `origination_fee` | Float | No | 0 | - | Fee added to principal |
-| `additional_fee` | Float | No | 0 | - | Additional processing fee |
-| `additional_fee_label` | String | No | "Additional Fee" | - | Label for additional fee |
-| `additional_fee_treatment` | Symbol | No | `:distributed` | `:distributed`, `:add_to_principal`, `:separate_payment` | How to handle additional fee |
-| `bank_days_only` | Boolean | No | false | - | Skip weekends and holidays |
-| `interest_only_periods` | Integer | No | 0 | - | Number of interest-only payments |
-| `grace_period_days` | Integer | No | 0 | - | Days before first payment |
-| `interest_method` | Symbol | No | `:simple` | `:simple`, `:precomputed` | Interest calculation method |
-
-### Methods
-
-#### `generate(output: :console, csv_path: nil)`
-
-Generate the amortization schedule.
-
-**Parameters:**
-- `output` (Symbol): `:console` or `:csv`
-- `csv_path` (String): Required if output is `:csv`
-
-**Returns:** `nil` (outputs to console or file)
-
-**Example:**
-```ruby
-# Console output
-schedule.generate
-
-# CSV output
-schedule.generate(output: :csv, csv_path: "my_schedule.csv")
-```
-
-## Fee Treatment Options
-
-### 1. Distributed (`:distributed`)
-The fee is spread evenly across all payments.
-
-```ruby
-additional_fee_treatment: :distributed
-```
-
-**Best for:** Keeping individual payments manageable while recovering fees over time
-
-### 2. Add to Principal (`:add_to_principal`)
-The fee is added to the loan principal upfront, increasing the base amount financed.
-
-```ruby
-additional_fee_treatment: :add_to_principal
-```
-
-**Best for:** Rolling all costs into the loan amount
-
-### 3. Separate Payment (`:separate_payment`)
-The fee is collected as a separate first payment before regular amortization begins.
-
-```ruby
-additional_fee_treatment: :separate_payment
-```
-
-**Best for:** Collecting fees upfront separately from the loan repayment
-
-## Interest Calculation Methods
-
-### Simple Interest (`:simple`)
-
-Interest accrues daily on the remaining principal balance. As you pay down the principal, interest payments decrease over time.
-
-**Formula:** Daily interest = (Principal Balance × Annual Rate) / 365
-
-**Characteristics:**
-- Interest decreases as principal is paid down
-- Lower total interest cost
-- More principal goes toward balance reduction in later payments
-
-**Best for:** Traditional amortizing loans, consumer loans
-
-```ruby
-interest_method: :simple
-```
-
-### Precomputed Interest (`:precomputed`)
-
-Total interest is calculated upfront based on the original principal and divided equally across all payments. Interest per payment stays constant regardless of principal reduction.
-
-**Formula:** Total interest calculated at start, then divided by number of payments
-
-**Characteristics:**
-- Interest payment stays constant throughout loan
-- Higher total interest cost
-- Simpler payment structure
-
-**Best for:** Fixed payment structures, certain consumer loan types
-
-```ruby
-interest_method: :precomputed
-```
-
-## Federal Bank Holidays
-
-When `bank_days_only: true`, the schedule automatically skips:
-
-### Weekends
-- Saturday
-- Sunday
-
-### US Federal Reserve Holidays (11 total)
-- New Year's Day (January 1)
-- Martin Luther King Jr. Birthday (Third Monday in January)
-- Presidents' Day / Washington's Birthday (Third Monday in February)
-- Memorial Day (Last Monday in May)
-- Juneteenth National Independence Day (June 19)
-- Independence Day (July 4)
-- Labor Day (First Monday in September)
-- Columbus Day (Second Monday in October)
-- Veterans Day (November 11)
-- Thanksgiving Day (Fourth Thursday in November)
-- Christmas Day (December 25)
-
-**Weekend Observation Rules:**
-- Holidays falling on Saturday → observed on preceding Friday
-- Holidays falling on Sunday → observed on following Monday
-
-These rules are automatically handled by the `holidays` gem.
-
-## Usage Examples
-
-### Example 1: Simple Daily Loan
-
-```ruby
-require 'amortizy'
-
-schedule = Amortizy::AmortizationSchedule.new(
-  start_date: "2025-01-15",
-  principal: 50000.00,
-  term_months: 6,
-  annual_rate: 12.0,
-  frequency: :daily
-)
-
-schedule.generate
-```
-
-### Example 2: Weekly Loan with Grace Period
-
-```ruby
-require 'amortizy'
-
-schedule = Amortizy::AmortizationSchedule.new(
-  start_date: "2025-01-15",
-  principal: 75000.00,
-  term_months: 12,
-  annual_rate: 15.0,
-  frequency: :weekly,
-  grace_period_days: 7  # One week grace period
-)
-
-schedule.generate
-```
-
-### Example 3: Interest-Only with Bank Days
-
-```ruby
-require 'amortizy'
-
-schedule = Amortizy::AmortizationSchedule.new(
-  start_date: "2025-01-15",
-  principal: 100000.00,
-  term_months: 18,
-  annual_rate: 10.0,
-  frequency: :weekly,
-  interest_only_periods: 8,   # First 8 weeks interest-only
-  bank_days_only: true         # Skip weekends and holidays
-)
-
-schedule.generate
-```
-
-### Example 4: Complex Commercial Loan
-
-```ruby
-require 'amortizy'
-
-schedule = Amortizy::AmortizationSchedule.new(
-  start_date: "2025-01-15",
-  principal: 250000.00,
-  term_months: 18,
-  annual_rate: 14.5,
-  frequency: :daily,
-  origination_fee: 25000.00,
-  additional_fee: 5000.00,
-  additional_fee_label: "Processing Fee",
-  additional_fee_treatment: :distributed,
-  bank_days_only: true,
-  interest_only_periods: 20,
-  grace_period_days: 5,
-  interest_method: :simple
-)
-
-schedule.generate(output: :csv, csv_path: "commercial_loan.csv")
-```
-
-## Programmatic Access
-
-Access schedule data directly for custom processing:
-
-```ruby
-require 'amortizy'
-
-schedule = Amortizy::AmortizationSchedule.new(
-  start_date: "2025-01-15",
-  principal: 50000.00,
-  term_months: 12,
-  annual_rate: 10.0,
-  frequency: :daily
-)
-
-# Get raw schedule data
-schedule_data = schedule.send(:generate_schedule_data)
-
-# Process each payment
-schedule_data.each do |payment|
-  puts "Payment #{payment[:payment_number]}"
-  puts "  Date: #{payment[:date]}"
-  puts "  Principal: $#{'%.2f' % payment[:principal_payment]}"
-  puts "  Interest: $#{'%.2f' % payment[:interest_payment]}"
-  puts "  Balance: $#{'%.2f' % payment[:principal_balance]}"
-end
-
-# Calculate totals
-total_interest = schedule_data.sum { |row| row[:interest_payment] || 0 }
-total_principal = schedule_data.sum { |row| row[:principal_payment] || 0 }
-
-puts "\nLoan Summary:"
-puts "Total Interest Paid: $#{'%.2f' % total_interest}"
-puts "Total Principal Paid: $#{'%.2f' % total_principal}"
-puts "Total Amount Paid: $#{'%.2f' % (total_interest + total_principal)}"
-```
-
-## Output Formats
-
-### Console Output
-
-Formatted table display with columns:
-- Payment number
-- Payment date
-- Days in period
-- Principal payment
-- Interest payment
-- Additional fee payment (if applicable)
-- Total payment
-- Principal balance
-- Accrued interest
-- Total balance
-- Payment type (Regular, Interest Only, Grace Period, etc.)
-
-### CSV Output
-
-Same data as console output in spreadsheet-compatible CSV format. Suitable for:
-- Excel/Google Sheets import
-- Financial analysis and reporting
-- Data visualization
-- Record keeping and audits
-- Integration with other systems
-
 ## Requirements
 
-- Ruby 2.7 or higher
+- Ruby 3.0 or higher
 - `holidays` gem (~> 8.0) - automatically installed as a dependency
 
 ## Development
@@ -384,74 +351,40 @@ After checking out the repo, run:
 # Install dependencies
 bundle install
 
-# Install git hooks
-ln -sf ../../bin/hooks/pre-push .git/hooks/pre-push
-
 # Run tests
 bundle exec rspec
 
 # Run linter
 bundle exec rubocop
 
-
-### Git Hook Features
-
-✅ Runs tests before every push
-✅ Runs RuboCop before every push  
-✅ Prevents bad code from being pushed
-✅ Shows clear error messages
-✅ Can be shared with other developers
-
----
-
-## Summary
-
-1. **Grace period bank day adjustment**: ✅ Already working! Just added tests.
-2. **Pre-push hook**: ✅ Created in `.git/hooks/pre-push` and `bin/hooks/pre-push`
-
-
 # Run interactive console
 bin/console
-
-# Install gem locally for testing
-gem install ./amortizy-1.0.0.gem
 ```
 
 ## Testing
 
-Amortizy includes a comprehensive RSpec test suite with 29 test cases covering:
+The test suite includes 70 RSpec examples covering:
 
 - Initialization and validation
-- Payment calculations
+- Payment calculations for all four frequencies
+- Dual input model (term_months vs num_payments)
 - Effective principal calculations
-- Schedule generation
+- Schedule generation and full amortization
 - Interest methods (simple vs precomputed)
-- Grace periods
-- Interest-only periods
-- Bank day functionality
-- Federal holiday detection
-- Fee treatments
+- Grace periods and interest-only periods
+- Bank day functionality and federal holiday detection
+- Fee treatments (distributed, add to principal, separate payment)
+- Monthly date drift prevention with bank_days_only
 - CSV generation
-- Total payment calculations
+- Public API (schedule, summary, convenience methods)
+- Deep freeze immutability
+- Edge cases (year boundaries, month-end clamping, input validation)
 
 Run the test suite:
 
 ```bash
 bundle exec rspec
 ```
-
-## Use Cases
-
-Amortizy is perfect for:
-
-- **Financial service applications** - Build loan calculators and amortization tools
-- **Lending platforms** - Generate accurate payment schedules for borrowers
-- **Consumer lending** - Handle personal loans, installment loans, and lines of credit
-- **Business lending** - Manage commercial loans with complex terms
-- **Financial modeling** - Analyze different loan scenarios and structures
-- **Payment processing systems** - Generate schedules for automated payment processing
-- **Financial education** - Demonstrate how loan payments and interest work
-- **Comparison tools** - Help users compare different loan options
 
 ## Contributing
 
@@ -468,15 +401,6 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/zapati
 7. Push to your branch (`git push origin feature/amazing-feature`)
 8. Open a Pull Request
 
-### Reporting Issues
-
-When reporting issues, please include:
-- Ruby version (`ruby -v`)
-- Gem version
-- Steps to reproduce
-- Expected vs actual behavior
-- Any error messages
-
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
@@ -488,19 +412,3 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 ## Author
 
 **Rich Zapata** - [@zapatify](https://github.com/zapatify)
-
-## Acknowledgments
-
-- Built with [Bundler](https://bundler.io/) gem structure
-- Uses the [holidays](https://github.com/holidays/holidays) gem for accurate federal holiday detection
-- Inspired by the need for flexible, accurate loan amortization tools in Ruby
-
-## Support
-
-- 📫 Report issues: [GitHub Issues](https://github.com/zapatify/amortizy/issues)
-- 📖 Documentation: [GitHub Repository](https://github.com/zapatify/amortizy)
-- 💎 RubyGems: [rubygems.org/gems/amortizy](https://rubygems.org/gems/amortizy)
-
----
-
-**Made with ❤️ for the Ruby community**

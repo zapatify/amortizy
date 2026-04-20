@@ -23,16 +23,40 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(schedule.term_months).to eq(12)
     end
 
+    it 'raises error for zero principal' do
+      expect do
+        Amortizy::AmortizationSchedule.new(
+          start_date: '2025-11-15',
+          principal: 0,
+          term_months: 12,
+          annual_rate: 17.75,
+          frequency: :daily
+        )
+      end.to raise_error(ArgumentError, /principal must be positive/)
+    end
+
+    it 'raises error for negative principal' do
+      expect do
+        Amortizy::AmortizationSchedule.new(
+          start_date: '2025-11-15',
+          principal: -5000,
+          term_months: 12,
+          annual_rate: 17.75,
+          frequency: :daily
+        )
+      end.to raise_error(ArgumentError, /principal must be positive/)
+    end
+
     it 'raises error for invalid term months' do
       expect do
         Amortizy::AmortizationSchedule.new(
           start_date: '2025-11-15',
           principal: 100_000.00,
-          term_months: 7,
+          term_months: 0,
           annual_rate: 17.75,
           frequency: :daily
         )
-      end.to raise_error(ArgumentError, /Term must be/)
+      end.to raise_error(ArgumentError, /term_months must be a positive integer/)
     end
 
     it 'raises error for invalid frequency' do
@@ -42,7 +66,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
           principal: 100_000.00,
           term_months: 12,
           annual_rate: 17.75,
-          frequency: :monthly
+          frequency: :quarterly
         )
       end.to raise_error(ArgumentError, /Frequency must be/)
     end
@@ -85,7 +109,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
         annual_rate: 15.0,
         frequency: :daily
       )
-      expect(schedule.send(:calculate_total_payments)).to eq(124)
+      expect(schedule.send(:total_payments)).to eq(181)
     end
 
     it 'calculates correct daily payment count for 12 months' do
@@ -96,7 +120,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
         annual_rate: 15.0,
         frequency: :daily
       )
-      expect(schedule.send(:calculate_total_payments)).to eq(248)
+      expect(schedule.send(:total_payments)).to eq(365)
     end
 
     it 'calculates correct weekly payment count for 12 months' do
@@ -107,7 +131,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
         annual_rate: 15.0,
         frequency: :weekly
       )
-      expect(schedule.send(:calculate_total_payments)).to eq(53)
+      expect(schedule.send(:total_payments)).to eq(52)
     end
   end
 
@@ -170,7 +194,7 @@ RSpec.describe Amortizy::AmortizationSchedule do
       )
       schedule_data = schedule.send(:generate_schedule_data)
       regular_payments = schedule_data.select { |row| row[:payment_number].is_a?(Integer) }
-      expect(regular_payments.length).to eq(124)
+      expect(regular_payments.length).to eq(181)
     end
 
     it 'fully amortizes the loan' do
@@ -458,10 +482,10 @@ RSpec.describe Amortizy::AmortizationSchedule do
         schedule = Amortizy::AmortizationSchedule.new(
           start_date: '2025-11-15',
           principal: 10_000.00,
-          term_months: 6,
+          num_payments: 100,
           annual_rate: 15.0,
           frequency: :daily,
-          additional_fee: 124.00,
+          additional_fee: 100.00,
           additional_fee_treatment: :distributed,
           bank_days_only: false
         )
@@ -593,7 +617,414 @@ RSpec.describe Amortizy::AmortizationSchedule do
       expect(first_payment).to eq(Date.new(2025, 12, 26))
     end
   end
-end
+  # Test dual input model (term_months OR num_payments)
 
-puts "\nTo run these tests, use: rspec amortization_spec.rb"
-puts '=' * 80
+  describe 'dual input model' do
+    it 'accepts num_payments instead of term_months' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        num_payments: 24,
+        frequency: :weekly,
+        annual_rate: 10.0
+      )
+      expect(schedule.send(:total_payments)).to eq(24)
+    end
+
+    it 'raises error when both term_months and num_payments are provided' do
+      expect do
+        Amortizy::AmortizationSchedule.new(
+          start_date: '2026-01-15',
+          principal: 50_000.00,
+          term_months: 12,
+          num_payments: 24,
+          frequency: :weekly,
+          annual_rate: 10.0
+        )
+      end.to raise_error(ArgumentError, /Cannot specify both/)
+    end
+
+    it 'raises error when neither term_months nor num_payments is provided' do
+      expect do
+        Amortizy::AmortizationSchedule.new(
+          start_date: '2026-01-15',
+          principal: 50_000.00,
+          frequency: :weekly,
+          annual_rate: 10.0
+        )
+      end.to raise_error(ArgumentError, /Must specify either/)
+    end
+
+    it 'accepts any positive integer for term_months' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        term_months: 36,
+        frequency: :weekly,
+        annual_rate: 10.0
+      )
+      expect(schedule.term_months).to eq(36)
+    end
+
+    it 'calculates num_payments dynamically for weekly frequency' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        term_months: 12,
+        frequency: :weekly,
+        annual_rate: 10.0
+      )
+      # 12 months ~ 52 weeks
+      expect(schedule.send(:total_payments)).to eq(52)
+    end
+
+    it 'calculates num_payments dynamically for daily frequency' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        term_months: 12,
+        frequency: :daily,
+        annual_rate: 10.0
+      )
+      # 12 months = 365 calendar days
+      expect(schedule.send(:total_payments)).to eq(365)
+    end
+
+    it 'calculates num_payments for daily with bank_days_only' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        term_months: 12,
+        frequency: :daily,
+        annual_rate: 10.0,
+        bank_days_only: true
+      )
+      payments = schedule.send(:total_payments)
+      # ~252 business days in a year, give or take
+      expect(payments).to be_between(248, 254)
+    end
+
+    it 'fully amortizes with num_payments input' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        num_payments: 52,
+        frequency: :weekly,
+        annual_rate: 12.0
+      )
+      schedule_data = schedule.send(:generate_schedule_data)
+      final_payment = schedule_data.last
+      expect(final_payment[:principal_balance]).to be < 0.02
+    end
+  end
+
+  # Test monthly and biweekly frequencies
+
+  describe 'monthly frequency' do
+    it 'accepts monthly frequency' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 12,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      expect(schedule.send(:total_payments)).to eq(12)
+    end
+
+    it 'generates correct number of monthly payments' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 24,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      schedule_data = schedule.send(:generate_schedule_data)
+      regular_payments = schedule_data.select { |row| row[:payment_number].is_a?(Integer) }
+      expect(regular_payments.length).to eq(24)
+    end
+
+    it 'fully amortizes a monthly loan' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 12,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      schedule_data = schedule.send(:generate_schedule_data)
+      final_payment = schedule_data.last
+      expect(final_payment[:principal_balance]).to be < 0.02
+    end
+
+    it 'handles month-end edge cases' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-31',
+        principal: 50_000.00,
+        term_months: 3,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      schedule_data = schedule.send(:generate_schedule_data)
+      dates = schedule_data.map { |row| row[:date] }
+      # First payment: Feb doesn't have 31 days, should use last day of month
+      expect(dates[0].month).to eq(2)
+      expect(dates[0].day).to eq(28)
+    end
+
+    it 'spaces payments one month apart' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-03-15',
+        principal: 50_000.00,
+        term_months: 3,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      schedule_data = schedule.send(:generate_schedule_data)
+      dates = schedule_data.map { |row| row[:date] }
+      expect(dates[0]).to eq(Date.new(2026, 4, 15))
+      expect(dates[1]).to eq(Date.new(2026, 5, 15))
+      expect(dates[2]).to eq(Date.new(2026, 6, 15))
+    end
+  end
+
+  describe 'monthly with bank_days_only' do
+    it 'does not accumulate date drift over 12 months' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 12,
+        frequency: :monthly,
+        annual_rate: 10.0,
+        bank_days_only: true
+      )
+      data = schedule.schedule
+      dates = data.map { |r| r[:date] }
+      # Payment dates should stay near the 15th, never drift past the 20th
+      dates.each do |d|
+        expect(d.day).to be <= 20,
+                         "Payment on #{d} drifted to day #{d.day}, expected <= 20"
+      end
+    end
+
+    it 'all payment dates fall on business days' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 12,
+        frequency: :monthly,
+        annual_rate: 10.0,
+        bank_days_only: true
+      )
+      schedule.schedule.each do |row|
+        expect(row[:date].saturday?).to be_falsey
+        expect(row[:date].sunday?).to be_falsey
+      end
+    end
+  end
+
+  describe 'biweekly frequency' do
+    it 'accepts biweekly frequency' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 12,
+        frequency: :biweekly,
+        annual_rate: 10.0
+      )
+      expect(schedule.send(:total_payments)).to eq(26)
+    end
+
+    it 'fully amortizes a biweekly loan' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 12,
+        frequency: :biweekly,
+        annual_rate: 10.0
+      )
+      schedule_data = schedule.send(:generate_schedule_data)
+      final_payment = schedule_data.last
+      expect(final_payment[:principal_balance]).to be < 0.02
+    end
+
+    it 'spaces payments 14 days apart' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        num_payments: 3,
+        frequency: :biweekly,
+        annual_rate: 10.0
+      )
+      schedule_data = schedule.send(:generate_schedule_data)
+      dates = schedule_data.map { |row| row[:date] }
+      expect(dates[1] - dates[0]).to eq(14)
+    end
+  end
+
+  # Test public API
+
+  describe 'public API' do
+    let(:schedule) do
+      Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 12,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+    end
+
+    describe '#schedule' do
+      it 'returns an array of payment hashes' do
+        data = schedule.schedule
+        expect(data).to be_an(Array)
+        expect(data.first).to be_a(Hash)
+        expect(data.first).to have_key(:payment_number)
+        expect(data.first).to have_key(:date)
+        expect(data.first).to have_key(:principal_payment)
+      end
+
+      it 'returns frozen data' do
+        data = schedule.schedule
+        expect(data).to be_frozen
+      end
+
+      it 'prevents mutation of individual payment hashes' do
+        data = schedule.schedule
+        expect { data.first[:principal_payment] = 999_999 }.to raise_error(FrozenError)
+      end
+    end
+
+    describe '#summary' do
+      it 'returns a hash with loan summary' do
+        result = schedule.summary
+        expect(result).to be_a(Hash)
+        expect(result[:total_payments]).to eq(12)
+        expect(result[:start_date]).to eq(Date.parse('2026-01-15'))
+        expect(result[:principal]).to eq(100_000.00)
+        expect(result[:total_interest]).to be > 0
+        expect(result[:total_paid]).to be > 100_000.00
+        expect(result[:end_date]).to be_a(Date)
+      end
+    end
+
+    describe '#end_date' do
+      it 'returns the date of the last payment' do
+        expect(schedule.end_date).to be_a(Date)
+        expect(schedule.end_date).to be > Date.parse('2026-01-15')
+      end
+    end
+
+    describe '#total_interest' do
+      it 'returns total interest paid' do
+        expect(schedule.total_interest).to be > 0
+        expect(schedule.total_interest).to be < 100_000.00
+      end
+    end
+
+    describe '#total_paid' do
+      it 'returns total amount paid including principal and interest' do
+        expect(schedule.total_paid).to be > 100_000.00
+      end
+    end
+
+    describe '#payment_amount' do
+      it 'returns the regular payment amount' do
+        expect(schedule.payment_amount).to be > 0
+      end
+    end
+  end
+
+  # Edge cases from triad review
+
+  describe 'monthly December to January transition' do
+    it 'advances correctly across year boundary' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-12-15',
+        principal: 50_000.00,
+        term_months: 3,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      dates = schedule.schedule.map { |row| row[:date] }
+      expect(dates[0]).to eq(Date.new(2027, 1, 15))
+      expect(dates[1]).to eq(Date.new(2027, 2, 15))
+      expect(dates[2]).to eq(Date.new(2027, 3, 15))
+    end
+  end
+
+  describe 'num_payments with new frequencies' do
+    it 'works with monthly frequency' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        num_payments: 6,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      expect(schedule.schedule.length).to eq(6)
+      expect(schedule.schedule.last[:principal_balance]).to be < 0.02
+    end
+
+    it 'works with biweekly frequency' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 50_000.00,
+        num_payments: 12,
+        frequency: :biweekly,
+        annual_rate: 10.0
+      )
+      regular = schedule.schedule.select { |r| r[:payment_number].is_a?(Integer) }
+      expect(regular.length).to eq(12)
+    end
+  end
+
+  describe 'input validation edge cases' do
+    it 'raises error for zero num_payments' do
+      expect do
+        Amortizy::AmortizationSchedule.new(
+          start_date: '2026-01-15',
+          principal: 50_000.00,
+          num_payments: 0,
+          frequency: :weekly,
+          annual_rate: 10.0
+        )
+      end.to raise_error(ArgumentError, /num_payments must be a positive integer/)
+    end
+
+    it 'raises error for negative num_payments' do
+      expect do
+        Amortizy::AmortizationSchedule.new(
+          start_date: '2026-01-15',
+          principal: 50_000.00,
+          num_payments: -5,
+          frequency: :weekly,
+          annual_rate: 10.0
+        )
+      end.to raise_error(ArgumentError, /num_payments must be a positive integer/)
+    end
+  end
+
+  describe 'term_months and num_payments equivalence' do
+    it 'produces identical schedules for monthly frequency' do
+      by_term = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        term_months: 12,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      by_count = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 100_000.00,
+        num_payments: 12,
+        frequency: :monthly,
+        annual_rate: 10.0
+      )
+      expect(by_term.schedule.length).to eq(by_count.schedule.length)
+      expect(by_term.total_interest).to be_within(0.01).of(by_count.total_interest)
+    end
+  end
+end
