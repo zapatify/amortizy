@@ -19,7 +19,8 @@ Perfect for financial applications, lending platforms, and loan calculators.
 - **Bank day calculations**: Automatically skip weekends and US Federal Reserve holidays
 - **Multiple output formats**: Console display or CSV export
 - **Public API**: Programmatic access to schedule data, summaries, and totals
-- **Testing**: 70 RSpec tests
+- **Commercial financing disclosures**: APR (Reg Z actuarial method), finance charge, amount financed, and more
+- **Testing**: 120 RSpec tests
 
 ## Installation
 
@@ -325,6 +326,107 @@ schedule = Amortizy::AmortizationSchedule.new(
 schedule.generate(output: :csv, csv_path: "commercial_loan.csv")
 ```
 
+## Commercial Financing Disclosures
+
+Amortizy includes a disclosure module for computing data elements required by California SB 1235 and similar state commercial financing disclosure laws (New York, Georgia, etc.). Values are jurisdiction-agnostic — computed per the most stringent methodology, usable for any state.
+
+The `Disclosure` class wraps an existing `AmortizationSchedule` and computes nine disclosure elements. The gem computes the numbers — your application handles document formatting.
+
+**Key assumption:** The origination fee is treated as a prepaid finance charge (deducted from amount financed, included in finance charge). This is the standard treatment for commercial lending.
+
+### Basic Usage
+
+```ruby
+schedule = Amortizy::AmortizationSchedule.new(
+  start_date: "2026-01-15",
+  principal: 50_000,
+  annual_rate: 12.0,
+  frequency: :monthly,
+  term_months: 36,
+  origination_fee: 500,
+  additional_fee: 250,
+  additional_fee_treatment: :distributed
+)
+
+disclosure = Amortizy::Disclosure.new(schedule)
+
+disclosure.apr                   # => 12.3 (Reg Z actuarial method, 10 bps precision)
+disclosure.finance_charge        # => 11119.65
+disclosure.amount_financed       # => 49500.0
+disclosure.total_payment_amount  # => 60619.65
+disclosure.recipient_funds       # => 49500.0
+disclosure.term_display          # => "3 years, 0.20 months"
+disclosure.average_monthly_cost  # => nil (monthly frequency)
+disclosure.prepayment            # => { has_non_interest_charges: false, ... }
+```
+
+### With Third-Party Payments and Prepayment Info
+
+```ruby
+disclosure = Amortizy::Disclosure.new(
+  schedule,
+  third_party_payments: 10_000,
+  prepayment_penalty_max: 1_200,
+  additional_prepayment_fees: [
+    { amount: 250.0, description: "Early termination fee" }
+  ]
+)
+
+disclosure.recipient_funds  # => 39500.0 (amount_financed - third_party_payments)
+disclosure.prepayment
+# => {
+#   has_non_interest_charges: true,
+#   max_non_interest_finance_charge: 1200.0,
+#   has_additional_fees: true,
+#   additional_fees: [{ amount: 250.0, description: "Early termination fee" }]
+# }
+```
+
+### Output Formats
+
+```ruby
+# Raw values
+disclosure.to_h
+# => { amount_financed: 49500.0, apr: 12.3, finance_charge: 11119.65, ... }
+
+# With regulation-correct labels (per CA SB 1235 section 910)
+disclosure.to_labeled_h
+# => {
+#   amount_financed: { label: "Funding Provided", value: 49500.0 },
+#   apr: { label: "Annual Percentage Rate (APR)", value: 12.3 },
+#   finance_charge: { label: "Finance Charge", value: 11119.65 },
+#   ...
+# }
+```
+
+### Disclosure Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `third_party_payments` | Float | 0 | Amounts paid to third parties from the financing |
+| `prepayment_penalty_max` | Float | 0 | Maximum non-interest charge on early payoff |
+| `additional_prepayment_fees` | Array | [] | Array of `{ amount:, description: }` hashes |
+
+### Disclosure Elements
+
+| Element | Method | Description | Regulatory Reference |
+|---------|--------|-------------|---------------------|
+| Funding Provided | `#amount_financed` | Principal adjusted for prepaid finance charges | §900(a)(1)(B) |
+| APR | `#apr` | Annual percentage rate (Reg Z actuarial method) | §940 |
+| Finance Charge | `#finance_charge` | Total dollar cost (derived from Reg Z identity) | §943 |
+| Total Payment Amount | `#total_payment_amount` | Sum of all borrower payments | §910(a)(5) |
+| Payment | `#payment_amount` | Regular periodic payment | §910(a)(6) |
+| Term | `#term_display` | Days (<=1yr) or years/months (>1yr) | §901(a)(4) |
+| Average Monthly Cost | `#average_monthly_cost` | For non-monthly frequencies only | §910(a)(12) |
+| Recipient Funds | `#recipient_funds` | Net amount to borrower | §900(a)(26) |
+| Prepayment | `#prepayment` | Prepayment penalty details | §910(a)(8-10) |
+
+### Technical Notes
+
+- **APR calculation** uses the actuarial method per Appendix J of Regulation Z (12 CFR Part 1026). Newton-Raphson solver with bisection fallback. APR rounded to nearest 10 basis points per §901(a)(5). Accuracy within 1/8 of 1 percentage point per §955.
+- **Finance charge** is derived from the Reg Z identity: `total_payment_amount - amount_financed`. This guarantees the three core disclosure values are always internally consistent.
+- **Floating-point arithmetic** is used for all calculations. This is adequate for typical commercial loans. For extremely large principals or very long terms (1000+ payments), consider validating against a reference APR calculator.
+
 ## Command Line Interface
 
 Amortizy includes an interactive CLI tool:
@@ -363,7 +465,7 @@ bin/console
 
 ## Testing
 
-The test suite includes 70 RSpec examples covering:
+The test suite includes 120 RSpec examples covering:
 
 - Initialization and validation
 - Payment calculations for all four frequencies
@@ -379,6 +481,9 @@ The test suite includes 70 RSpec examples covering:
 - Public API (schedule, summary, convenience methods)
 - Deep freeze immutability
 - Edge cases (year boundaries, month-end clamping, input validation)
+- Commercial financing disclosures (APR, finance charge, amount financed, all nine elements)
+- Reg Z identity verification across all fee treatment modes
+- APR solver convergence (grace periods, interest-only, short-term, zero-rate loans)
 
 Run the test suite:
 
