@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-10-21
+
+### Changed
+- Requires Ruby 3.3 or newer (3.0, 3.1 and 3.2 are end-of-life)
+- `holidays` dependency updated from 8.x to 11.7; holiday dates are unchanged
+- CI now tests Ruby 3.3, 3.4 and 4.0
+
 ## [2.1.0] - 2026-04-20
 
 ### Added

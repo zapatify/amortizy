@@ -442,8 +442,8 @@ The CLI provides:
 
 ## Requirements
 
-- Ruby 3.0 or higher
-- `holidays` gem (~> 8.0) - automatically installed as a dependency
+- Ruby 3.3 or higher
+- `holidays` gem (~> 11.7) - automatically installed as a dependency
 
 ## Development
 
