@@ -41,6 +41,31 @@ RSpec.describe Amortizy::ConsoleFormatter do
       expect(output).to include('Grace')
     end
 
+    it 'shows the balloon in the summary when there is one' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 12_000,
+        term_months: 12,
+        annual_rate: 0,
+        frequency: :monthly,
+        balloon_amount: 6_000
+      )
+      output = capture_stdout { described_class.new(schedule).render }
+      expect(output).to include('Balloon Payment: $6000.00')
+    end
+
+    it 'omits the balloon line when there is none' do
+      schedule = Amortizy::AmortizationSchedule.new(
+        start_date: '2026-01-15',
+        principal: 12_000,
+        term_months: 12,
+        annual_rate: 0,
+        frequency: :monthly
+      )
+      output = capture_stdout { described_class.new(schedule).render }
+      expect(output).not_to include('Balloon Payment:')
+    end
+
     it 'displays custom additional fee label' do
       schedule = Amortizy::AmortizationSchedule.new(
         start_date: '2026-01-15',

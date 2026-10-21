@@ -62,6 +62,7 @@ module Amortizy
       puts "Annual Rate: #{format('%.2f', summary[:annual_rate])}%"
       puts "\nOriginal Principal: $#{format('%.2f', summary[:principal])}"
       puts "Regular Payment: $#{format('%.2f', summary[:payment_amount])}"
+      puts "Balloon Payment: $#{format('%.2f', summary[:balloon_amount])}" if summary[:balloon_amount].positive?
       puts "Total Interest Paid: $#{format('%.2f', summary[:total_interest])}"
       puts "Total Amount Paid: $#{format('%.2f', summary[:total_paid])}"
       puts '=' * 195

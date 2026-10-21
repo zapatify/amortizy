@@ -15,12 +15,13 @@ Perfect for financial applications, lending platforms, and loan calculators.
 - **Interest calculation methods**: Simple (accrued daily) or precomputed (fixed per payment)
 - **Grace periods**: Grace periods before first payment (interest accrues and capitalizes)
 - **Interest-only periods**: Configure initial interest-only payment phases
+- **Balloon payments**: Leave a lump sum due with the final payment, common in commercial lending
 - **Fee handling**: Origination fees and additional fees with three treatment options
 - **Bank day calculations**: Automatically skip weekends and US Federal Reserve holidays
 - **Multiple output formats**: Console display or CSV export
 - **Public API**: Programmatic access to schedule data, summaries, and totals
 - **Commercial financing disclosures**: APR (Reg Z actuarial method), finance charge, amount financed, and more
-- **Testing**: 120 RSpec tests
+- **Testing**: 143 RSpec tests
 
 ## Installation
 
@@ -136,6 +137,7 @@ schedule.generate
 | `interest_only_periods` | Integer | No | 0 | - | Number of interest-only payments |
 | `grace_period_days` | Integer | No | 0 | - | Days before first payment |
 | `interest_method` | Symbol | No | `:simple` | `:simple`, `:precomputed` | Interest calculation method |
+| `balloon_amount` | Float/numeric String | No | 0 | >= 0, less than the amortized balance | Principal left unpaid until the final payment. See [Balloon Payments](#balloon-payments) |
 
 *Provide either `term_months` or `num_payments`, not both.
 
@@ -183,6 +185,7 @@ Returns a hash with loan totals:
   frequency: :monthly,
   annual_rate: 10.0,
   payment_amount: 8791.59,
+  balloon_amount: 0.0,
   total_interest: 5499.06,
   total_paid: 105499.06
 }
@@ -195,7 +198,8 @@ Returns a hash with loan totals:
 | `#end_date` | Date of the last payment |
 | `#total_interest` | Sum of all interest payments |
 | `#total_paid` | Sum of all payments |
-| `#payment_amount` | Regular payment amount |
+| `#payment_amount` | Regular payment amount (excludes any balloon) |
+| `#balloon_amount` | Balloon due with the final payment (0.0 when none) |
 
 ## Payment Frequencies
 
@@ -257,6 +261,45 @@ pays off exactly on the final payment.
 Total interest is calculated upfront based on the original principal and divided equally across all payments. Interest per payment stays constant regardless of principal reduction.
 
 **Best for:** Fixed payment structures, certain consumer loan types
+
+## Balloon Payments
+
+A balloon loan's regular payments only pay the principal down to `balloon_amount`. That remaining
+principal is due as a lump sum with the final payment. Commercial real estate and equipment loans
+often work this way, with a short term and payments sized as if the loan ran much longer.
+
+```ruby
+schedule = Amortizy::AmortizationSchedule.new(
+  start_date: "2026-01-15",
+  principal: 500_000.00,
+  term_months: 60,
+  annual_rate: 7.25,
+  frequency: :monthly,
+  balloon_amount: 350_000.00
+)
+
+schedule.payment_amount          # => 5103.18   (payments 1-59)
+schedule.schedule.last
+# => { payment_number: 60, date: #<Date 2031-01-15>, total_payment: 355103.18,
+#      payment_type: "Balloon Payment", principal_balance: 0, ... }
+```
+
+How it works:
+
+- **Simple interest:** the payment is sized on the actual days in each period so that exactly
+  `balloon_amount` is left after the regular payments. With equal-length periods this is the standard
+  annuity payment with a future value. Interest keeps accruing on the balloon for the whole term.
+- **Precomputed interest:** the principal portion of each payment is
+  `(amortized balance - balloon_amount) / principal payments`. Interest is unchanged.
+- **The final payment** is the regular payment plus the balloon, to the cent.
+- **A balloon close to the principal** leaves a payment barely above the interest, so longer periods
+  can show negative amortization (see [Simple Interest](#simple-interest-simple)). The final payment
+  still settles the loan exactly.
+- **Works with** every frequency, `num_payments`, interest-only periods, grace periods and fees. The
+  limit is measured against the amortized balance: principal + origination fee + capitalized grace
+  interest, plus the additional fee when it is `:add_to_principal`.
+- **Disclosures:** `Amortizy::Disclosure` reads the actual schedule, so the balloon is included in
+  the total payment amount, the finance charge and the APR.
 
 ## Federal Bank Holidays
 
