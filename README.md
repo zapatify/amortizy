@@ -3,7 +3,7 @@
 [![Gem Version](https://img.shields.io/gem/v/amortizy.svg?style=flat)](https://rubygems.org/gems/amortizy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Ruby gem for generating loan amortization schedules. Supports monthly, bi-weekly, weekly, and daily payment frequencies with grace periods, interest-only payments, federal bank holidays, and multiple interest calculation methods.
+A Ruby gem for generating loan amortization schedules. Supports monthly, bi-weekly, weekly, and daily payment frequencies with grace periods, interest-only payments, balloon payments, federal bank holidays, and multiple interest calculation methods.
 
 Perfect for financial applications, lending platforms, and loan calculators.
 
@@ -21,7 +21,7 @@ Perfect for financial applications, lending platforms, and loan calculators.
 - **Multiple output formats**: Console display or CSV export
 - **Public API**: Programmatic access to schedule data, summaries, and totals
 - **Commercial financing disclosures**: APR (Reg Z actuarial method), finance charge, amount financed, and more
-- **Testing**: 143 RSpec tests
+- **Tested**: RSpec suite covering every option above
 
 ## Installation
 
@@ -63,9 +63,9 @@ schedule.generate
 
 # Access data programmatically
 schedule.summary          # => { start_date:, end_date:, principal:, total_payments:, ... }
-schedule.payment_amount   # => 8791.59
-schedule.total_interest   # => 5499.06
-schedule.total_paid       # => 105499.06
+schedule.payment_amount   # => 8789.68
+schedule.total_interest   # => 5476.15
+schedule.total_paid       # => 105476.15
 schedule.end_date         # => #<Date: 2027-01-15>
 
 # Get the full schedule as an array of hashes
@@ -95,7 +95,7 @@ schedule.end_date           # => the date of the 26th payment
 schedule.term_months        # => nil (not applicable when using num_payments)
 ```
 
-### Advanced Example with All Features
+### Advanced Example
 
 ```ruby
 schedule = Amortizy::AmortizationSchedule.new(
@@ -159,18 +159,22 @@ Returns a frozen array of payment hashes. Each hash contains:
 ```ruby
 {
   payment_number: 1,
-  date: #<Date>,
-  principal_payment: 8302.48,
-  interest_payment: 489.11,
+  date: #<Date: 2026-02-15>,
+  principal_payment: 7940.36,
+  interest_payment: 849.32,
   additional_fee_payment: 0.0,
-  total_payment: 8791.59,
-  principal_balance: 91697.52,
-  accrued_interest: 489.11,
-  total_balance: 92186.63,
+  total_payment: 8789.68,
+  principal_balance: 92059.64,
+  accrued_interest: 849.32,
+  total_balance: 92908.95,
   payment_type: "Regular Payment",
-  days_in_period: 29
+  days_in_period: 31
 }
 ```
+
+`payment_type` is one of `"Regular Payment"`, `"Interest Only"`, `"Balloon Payment"` (the final row of a
+balloon loan), `"Additional Fee Payment"` (row `0`, with `:separate_payment`) or `"Grace Period"` (row
+`"Grace"`, which also carries `grace_interest_capitalized`).
 
 #### `#summary`
 
@@ -184,10 +188,10 @@ Returns a hash with loan totals:
   total_payments: 12,
   frequency: :monthly,
   annual_rate: 10.0,
-  payment_amount: 8791.59,
+  payment_amount: 8789.68,
   balloon_amount: 0.0,
-  total_interest: 5499.06,
-  total_paid: 105499.06
+  total_interest: 5476.15,
+  total_paid: 105476.15
 }
 ```
 
@@ -205,7 +209,7 @@ Returns a hash with loan totals:
 
 ### Monthly (`:monthly`)
 
-Payments on the same day each month. If the start date is the 31st, payments on shorter months use the last day of the month (e.g., Jan 31 -> Feb 28 -> Mar 28).
+Payments on the same day each month, starting one month after the start date (or after the grace period). If the start date is the 31st, payments on shorter months use the last day of the month, and later payments keep that earlier day (e.g., Jan 31 -> Feb 28 -> Mar 28 -> Apr 28).
 
 ### Bi-weekly (`:biweekly`)
 
@@ -232,7 +236,7 @@ The fee is added to the loan principal upfront, increasing the base amount finan
 **Best for:** Rolling all costs into the loan amount
 
 ### 3. Separate Payment (`:separate_payment`)
-The fee is collected as a separate first payment before regular amortization begins.
+The fee is collected as a separate payment (`payment_number: 0`) one period after the start, before regular amortization begins.
 
 **Best for:** Collecting fees upfront separately from the loan repayment
 
@@ -258,7 +262,7 @@ pays off exactly on the final payment.
 
 ### Precomputed Interest (`:precomputed`)
 
-Total interest is calculated upfront based on the original principal and divided equally across all payments. Interest per payment stays constant regardless of principal reduction.
+Total interest is calculated upfront on the principal plus origination fee for the estimated length of the loan, then divided equally across all payments. Interest per payment stays constant regardless of principal reduction.
 
 **Best for:** Fixed payment structures, certain consumer loan types
 
@@ -309,7 +313,7 @@ When `bank_days_only: true`, the schedule automatically skips weekends and US Fe
 
 - New Year's Day, MLK Jr. Day, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Columbus Day, Veterans Day, Thanksgiving, Christmas
 
-Weekend observation rules are handled automatically by the `holidays` gem.
+Weekend observation comes from the `holidays` gem: a Sunday holiday is observed the following Monday. **Known issue:** a Saturday holiday is currently also treated as closing the preceding Friday, which the Federal Reserve does not do ([#8](https://github.com/zapatify/amortizy/issues/8)).
 
 ## Usage Examples
 
@@ -383,11 +387,13 @@ schedule.generate(output: :csv, csv_path: "commercial_loan.csv")
 
 ## Commercial Financing Disclosures
 
-Amortizy includes a disclosure module for computing data elements required by California SB 1235 and similar state commercial financing disclosure laws (New York, Georgia, etc.). Values are jurisdiction-agnostic — computed per the most stringent methodology, usable for any state.
+Amortizy includes a disclosure module for computing data elements required by California SB 1235 and similar state commercial financing disclosure laws (New York, Georgia, etc.). The calculations follow California's regulations (10 CCR §900 et seq.). Check the methodology against your state's rules before relying on it elsewhere.
 
 The `Disclosure` class wraps an existing `AmortizationSchedule` and computes nine disclosure elements. The gem computes the numbers — your application handles document formatting.
 
 **Key assumption:** The origination fee is treated as a prepaid finance charge (deducted from amount financed, included in finance charge). This is the standard treatment for commercial lending.
+
+**Known issue:** `AmortizationSchedule` adds the origination fee to the balance the borrower repays, and `Disclosure` also deducts it from the amount financed, so the fee is counted twice. Until this is resolved, the amount financed is understated by the fee and the finance charge and APR are overstated ([#11](https://github.com/zapatify/amortizy/issues/11)). The example figures below reflect the current behavior.
 
 ### Basic Usage
 
@@ -405,12 +411,12 @@ schedule = Amortizy::AmortizationSchedule.new(
 
 disclosure = Amortizy::Disclosure.new(schedule)
 
-disclosure.apr                   # => 12.3 (Reg Z actuarial method, 10 bps precision)
-disclosure.finance_charge        # => 11119.65
+disclosure.apr                   # => 13.6 (Reg Z actuarial method, 10 bps precision)
+disclosure.finance_charge        # => 11123.13
 disclosure.amount_financed       # => 49500.0
-disclosure.total_payment_amount  # => 60619.65
+disclosure.total_payment_amount  # => 60623.13
 disclosure.recipient_funds       # => 49500.0
-disclosure.term_display          # => "3 years, 0.20 months"
+disclosure.term_display          # => "3 years, 0.03 months"
 disclosure.average_monthly_cost  # => nil (monthly frequency)
 disclosure.prepayment            # => { has_non_interest_charges: false, ... }
 ```
@@ -442,14 +448,14 @@ disclosure.prepayment
 ```ruby
 # Raw values
 disclosure.to_h
-# => { amount_financed: 49500.0, apr: 12.3, finance_charge: 11119.65, ... }
+# => { amount_financed: 49500.0, apr: 13.6, finance_charge: 11123.13, ... }
 
 # With regulation-correct labels (per CA SB 1235 section 910)
 disclosure.to_labeled_h
 # => {
 #   amount_financed: { label: "Funding Provided", value: 49500.0 },
-#   apr: { label: "Annual Percentage Rate (APR)", value: 12.3 },
-#   finance_charge: { label: "Finance Charge", value: 11119.65 },
+#   apr: { label: "Annual Percentage Rate (APR)", value: 13.6 },
+#   finance_charge: { label: "Finance Charge", value: 11123.13 },
 #   ...
 # }
 ```
@@ -483,19 +489,6 @@ disclosure.to_labeled_h
 - **Finance charge** is derived from the Reg Z identity: `total_payment_amount - amount_financed`. This guarantees the three core disclosure values are always internally consistent.
 - **Floating-point arithmetic** is used for all calculations. This is adequate for typical commercial loans. For extremely large principals or very long terms (1000+ payments), consider validating against a reference APR calculator.
 
-## Command Line Interface
-
-Amortizy includes an interactive CLI tool:
-
-```bash
-amortizy
-```
-
-The CLI provides:
-1. Run default examples (demonstrates simple vs precomputed interest)
-2. Enter parameters manually with interactive prompts
-3. Automatic CSV generation option
-
 ## Requirements
 
 - Ruby 3.3 or higher
@@ -521,7 +514,7 @@ bin/console
 
 ## Testing
 
-The test suite includes 120 RSpec examples covering:
+The RSpec suite covers:
 
 - Initialization and validation
 - Payment calculations for all four frequencies
@@ -530,6 +523,7 @@ The test suite includes 120 RSpec examples covering:
 - Schedule generation and full amortization
 - Interest methods (simple vs precomputed)
 - Grace periods and interest-only periods
+- Balloon payments across frequencies, interest methods and fees
 - Bank day functionality and federal holiday detection
 - Fee treatments (distributed, add to principal, separate payment)
 - Monthly date drift prevention with bank_days_only
