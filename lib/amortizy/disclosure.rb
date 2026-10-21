@@ -70,6 +70,16 @@ module Amortizy
       @schedule.payment_amount
     end
 
+    # --- Balloon Payment ---
+    # The final scheduled payment of a balloon loan (regular payment plus the
+    # balloon), or nil when the loan fully amortizes.
+
+    def balloon_payment
+      return nil unless @schedule.balloon_amount.positive?
+
+      @schedule.schedule.last[:total_payment]
+    end
+
     # --- Payment Frequency ---
 
     def payment_frequency
@@ -149,7 +159,7 @@ module Amortizy
         average_monthly_cost: average_monthly_cost&.round(2),
         recipient_funds: recipient_funds.round(2),
         prepayment: prepayment
-      }
+      }.merge(balloon_payment ? { balloon_payment: balloon_payment.round(2) } : {})
     end
 
     def to_labeled_h
@@ -164,7 +174,7 @@ module Amortizy
         average_monthly_cost: { label: 'Average Monthly Cost', value: average_monthly_cost&.round(2) },
         recipient_funds: { label: 'Recipient Funds', value: recipient_funds.round(2) },
         prepayment: prepayment
-      }
+      }.merge(balloon_payment ? { balloon_payment: { label: 'Balloon Payment', value: balloon_payment.round(2) } } : {})
     end
 
     private

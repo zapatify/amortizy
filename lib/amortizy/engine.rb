@@ -5,6 +5,7 @@
 # Generates comprehensive loan amortization schedules with support for:
 # - Grace periods with capitalized interest
 # - Interest-only payment periods
+# - Balloon payments due at maturity
 # - Origination and additional fees
 # - Simple or precomputed interest methods
 # - Bank business day calculations (Federal Reserve holidays)
@@ -16,13 +17,15 @@ require 'holidays'
 
 module Amortizy
   class AmortizationSchedule
+    DECIMAL_STRING = /\A\s*[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\s*\z/
+    private_constant :DECIMAL_STRING
     attr_reader :start_date, :principal, :term_months, :annual_rate, :frequency, :additional_fee_label,
-                :origination_fee, :additional_fee, :additional_fee_treatment
+                :origination_fee, :additional_fee, :additional_fee_treatment, :balloon_amount
 
     def initialize(start_date:, principal:, annual_rate:, frequency:, term_months: nil, num_payments: nil,
                    origination_fee: 0, additional_fee: 0, additional_fee_label: 'Additional Fee',
                    additional_fee_treatment: :distributed, bank_days_only: false, interest_only_periods: 0,
-                   grace_period_days: 0, interest_method: :simple)
+                   grace_period_days: 0, interest_method: :simple, balloon_amount: 0)
       @start_date = Date.parse(start_date.to_s)
       @principal = principal.to_f
       @annual_rate = annual_rate.to_f / 100.0
@@ -35,6 +38,7 @@ module Amortizy
       @interest_only_periods = interest_only_periods.to_i
       @grace_period_days = grace_period_days.to_i
       @interest_method = interest_method.to_sym
+      @balloon_amount = parse_balloon_amount(balloon_amount)
 
       validate_principal!
       validate_frequency!
@@ -42,6 +46,7 @@ module Amortizy
       validate_fee_treatment!
       validate_interest_only_periods!
       validate_interest_method!
+      validate_balloon_amount!
     end
 
     def generate(output: :console, csv_path: nil)
@@ -71,6 +76,7 @@ module Amortizy
         frequency: @frequency,
         annual_rate: @annual_rate * 100.0,
         payment_amount: payment_amount,
+        balloon_amount: @balloon_amount,
         total_interest: total_interest,
         total_paid: total_paid
       }
@@ -140,6 +146,26 @@ module Amortizy
       return if %i[simple precomputed].include?(@interest_method)
 
       raise ArgumentError, 'Interest method must be :simple or :precomputed'
+    end
+
+    def parse_balloon_amount(value)
+      return 0.0 if value.nil?
+      raise ArgumentError if value.is_a?(String) && !value.match?(DECIMAL_STRING)
+
+      amount = Float(value)
+      return amount if amount.finite?
+
+      raise ArgumentError
+    rescue ArgumentError, TypeError, RangeError
+      raise ArgumentError, "balloon_amount must be a number, got #{value.inspect}"
+    end
+
+    def validate_balloon_amount!
+      raise ArgumentError, 'balloon_amount must not be negative' if @balloon_amount.negative?
+      return if @balloon_amount < effective_principal
+
+      raise ArgumentError,
+            "balloon_amount must be less than the amortized balance (#{format('%.2f', effective_principal)})"
     end
 
     def total_payments
@@ -251,7 +277,7 @@ module Amortizy
       principal_payments = num - @interest_only_periods
 
       if @interest_method == :precomputed
-        principal_payment_portion = effective_principal / principal_payments
+        principal_payment_portion = (effective_principal - @balloon_amount) / principal_payments
         interest_portion = precomputed_interest_per_payment
 
         if @additional_fee_treatment == :distributed
@@ -270,12 +296,13 @@ module Amortizy
       end
     end
 
-    # The level payment that pays the balance to zero when interest is charged on
-    # each period's actual days. Interest-only periods leave the balance unchanged,
-    # so only the amortizing periods count. Each period grows the balance by
+    # The level payment that leaves the balloon (zero for a fully amortizing loan)
+    # outstanding with the final payment, when interest is charged on each
+    # period's actual days. Interest-only periods leave the balance unchanged, so
+    # only the amortizing periods count. Each period grows the balance by
     # (1 + r_k), which makes the final balance linear in the payment:
     #
-    #   payment = balance * prod(1 + r_k) / sum_k prod_{i>k}(1 + r_i)
+    #   payment = (balance * prod(1 + r_k) - balloon) / sum_k prod_{i>k}(1 + r_i)
     def level_payment
       growth = 1.0
       payments_value = 0.0
@@ -283,7 +310,7 @@ module Amortizy
         payments_value += growth
         growth *= 1 + rate
       end
-      effective_principal * growth / payments_value
+      ((effective_principal * growth) - @balloon_amount) / payments_value
     end
 
     def amortizing_period_rates
@@ -443,7 +470,7 @@ module Amortizy
         else
           principal_payment = [payment_amount - interest_payment - additional_fee_per_payment, balance].min
           principal_payment = balance if payment_number == num
-          payment_type = 'Regular Payment'
+          payment_type = payment_number == num && @balloon_amount.positive? ? 'Balloon Payment' : 'Regular Payment'
         end
 
         total_payment = principal_payment + interest_payment + additional_fee_per_payment
