@@ -180,7 +180,14 @@ RSpec.describe Amortizy::AmortizationSchedule, 'balloon payments' do
       expect(build(balloon_amount: nil).balloon_amount).to eq(0.0)
     end
 
+    it 'rejects hex, underscores and complex numbers' do
+      expect { build(balloon_amount: '0x1F40') }.to raise_error(ArgumentError, /must be a number/)
+      expect { build(balloon_amount: '1_000') }.to raise_error(ArgumentError, /must be a number/)
+      expect { build(balloon_amount: Complex(5_000, 1)) }.to raise_error(ArgumentError, /must be a number/)
+    end
+
     it 'accepts numeric strings' do
+      expect(build(balloon_amount: ' 1e3 ').balloon_amount).to eq(1_000.0)
       expect(build(balloon_amount: '40000.50').balloon_amount).to eq(40_000.5)
     end
 
@@ -203,6 +210,22 @@ RSpec.describe Amortizy::AmortizationSchedule, 'balloon payments' do
     it 'keeps the APR at the note rate when there are no fees' do
       disclosure = Amortizy::Disclosure.new(build(annual_rate: 12.0, balloon_amount: 40_000))
       expect(disclosure.apr).to be_within(0.125).of(12.0)
+    end
+
+    it 'discloses the final balloon payment' do
+      loan = build(balloon_amount: 40_000)
+      disclosure = Amortizy::Disclosure.new(loan)
+      final = loan.schedule.last[:total_payment].round(2)
+      expect(disclosure.balloon_payment).to eq(loan.schedule.last[:total_payment])
+      expect(disclosure.to_h[:balloon_payment]).to eq(final)
+      expect(disclosure.to_labeled_h[:balloon_payment]).to eq(label: 'Balloon Payment', value: final)
+    end
+
+    it 'omits the balloon payment when the loan fully amortizes' do
+      disclosure = Amortizy::Disclosure.new(build)
+      expect(disclosure.balloon_payment).to be_nil
+      expect(disclosure.to_h).not_to have_key(:balloon_payment)
+      expect(disclosure.to_labeled_h).not_to have_key(:balloon_payment)
     end
 
     it 'includes the balloon in the total of payments' do

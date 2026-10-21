@@ -17,6 +17,8 @@ require 'holidays'
 
 module Amortizy
   class AmortizationSchedule
+    DECIMAL_STRING = /\A\s*[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\s*\z/
+    private_constant :DECIMAL_STRING
     attr_reader :start_date, :principal, :term_months, :annual_rate, :frequency, :additional_fee_label,
                 :origination_fee, :additional_fee, :additional_fee_treatment, :balloon_amount
 
@@ -148,12 +150,13 @@ module Amortizy
 
     def parse_balloon_amount(value)
       return 0.0 if value.nil?
+      raise ArgumentError if value.is_a?(String) && !value.match?(DECIMAL_STRING)
 
       amount = Float(value)
       return amount if amount.finite?
 
       raise ArgumentError
-    rescue ArgumentError, TypeError
+    rescue ArgumentError, TypeError, RangeError
       raise ArgumentError, "balloon_amount must be a number, got #{value.inspect}"
     end
 

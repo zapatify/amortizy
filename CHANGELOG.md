@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The final row of a balloon loan has `payment_type: "Balloon Payment"`
 - `#balloon_amount` reader and `balloon_amount` in `#summary`
 - Console summary shows the balloon when there is one
+- `Disclosure#balloon_payment`, and `balloon_payment` in `#to_h` / `#to_labeled_h` for balloon loans
 
 ## [3.0.1] - 2026-10-21
 

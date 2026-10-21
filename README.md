@@ -137,7 +137,7 @@ schedule.generate
 | `interest_only_periods` | Integer | No | 0 | - | Number of interest-only payments |
 | `grace_period_days` | Integer | No | 0 | - | Days before first payment |
 | `interest_method` | Symbol | No | `:simple` | `:simple`, `:precomputed` | Interest calculation method |
-| `balloon_amount` | Float/numeric String | No | 0 | >= 0, less than the amortized balance | Principal left unpaid until the final payment. See [Balloon Payments](#balloon-payments) |
+| `balloon_amount` | Numeric or decimal String | No | 0 | >= 0, less than the amortized balance; other text raises `ArgumentError` | Principal left unpaid until the final payment. See [Balloon Payments](#balloon-payments) |
 
 *Provide either `term_months` or `num_payments`, not both.
 
@@ -299,7 +299,9 @@ How it works:
   limit is measured against the amortized balance: principal + origination fee + capitalized grace
   interest, plus the additional fee when it is `:add_to_principal`.
 - **Disclosures:** `Amortizy::Disclosure` reads the actual schedule, so the balloon is included in
-  the total payment amount, the finance charge and the APR.
+  the total payment amount, the finance charge and the APR. `#balloon_payment` returns the final
+  payment (regular payment plus balloon), and `#to_h` / `#to_labeled_h` include it as
+  `balloon_payment` / "Balloon Payment" when the loan has a balloon.
 
 ## Federal Bank Holidays
 
@@ -469,6 +471,7 @@ disclosure.to_labeled_h
 | Finance Charge | `#finance_charge` | Total dollar cost (derived from Reg Z identity) | §943 |
 | Total Payment Amount | `#total_payment_amount` | Sum of all borrower payments | §910(a)(5) |
 | Payment | `#payment_amount` | Regular periodic payment | §910(a)(6) |
+| Balloon Payment | `#balloon_payment` | Final payment of a balloon loan; `nil` (and omitted from the hashes) otherwise | - |
 | Term | `#term_display` | Days (<=1yr) or years/months (>1yr) | §901(a)(4) |
 | Average Monthly Cost | `#average_monthly_cost` | For non-monthly frequencies only | §910(a)(12) |
 | Recipient Funds | `#recipient_funds` | Net amount to borrower | §900(a)(26) |
