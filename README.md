@@ -236,7 +236,7 @@ The fee is added to the loan principal upfront, increasing the base amount finan
 **Best for:** Rolling all costs into the loan amount
 
 ### 3. Separate Payment (`:separate_payment`)
-The fee is collected as a separate payment (`payment_number: 0`) one period after the start, before regular amortization begins.
+The fee is collected as a separate payment (`payment_number: 0`) one period after the start. Regular payments begin one period after the fee. Interest accrues from funding, so the first regular payment carries the interest for the fee's period as well as its own, and the loan matures one period after `term_months`.
 
 **Best for:** Collecting fees upfront separately from the loan repayment
 
