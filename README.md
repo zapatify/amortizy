@@ -243,6 +243,13 @@ Interest accrues daily on the remaining principal balance. As you pay down the p
 The level payment is sized on the actual number of days in each scheduled period (after bank-day
 adjustments), so the final payment equals the regular payment and the schedule runs its full term.
 
+**Negative amortization:** a level payment can be smaller than the interest on a long period, such as
+a 31-day month at a high rate. That row shows a negative `principal_payment` and the unpaid interest is
+added to the balance. For example, a 30-year loan at 18% does this in every 31-day month for its first
+seven years or so (through about payment 89). With `bank_days_only: true`, weekend and holiday shifts
+make some periods 32 to 34 days long, and it continues through about payment 193. The schedule still
+pays off exactly on the final payment.
+
 **Best for:** Traditional amortizing loans, consumer loans
 
 ### Precomputed Interest (`:precomputed`)
