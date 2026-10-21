@@ -72,3 +72,8 @@ coverage/
 # CSV output files (from testing)
 *.csv
 Gemfile.lock
+
+# Local working notes — never committed (other tasks/ files are project-tracked)
+/tasks/passdown.md
+/tasks/qa-log.md
+/tasks/deliverables.md
