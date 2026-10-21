@@ -225,10 +225,10 @@ module Amortizy
       total_days.to_f / sample_size
     end
 
+    # A separate fee row takes a period of its own, and interest accrues through it.
     def estimate_total_loan_days
-      num = total_payments
-      avg_days_per_period = calculate_average_days_per_period
-      num * avg_days_per_period
+      periods = total_payments + (separate_fee_payment? ? 1 : 0)
+      periods * calculate_average_days_per_period
     end
 
     def calculate_precomputed_total_interest
@@ -313,8 +313,11 @@ module Amortizy
       ((effective_principal * growth) - @balloon_amount) / payments_value
     end
 
+    # Interest accrues from funding (or the end of the grace period). A separate
+    # fee row collects no interest, so the first regular payment carries the
+    # interest for the fee's period too.
     def amortizing_period_rates
-      previous_date = first_regular_period_start
+      previous_date = first_payment_date
       rates = regular_payment_dates.map do |date|
         rate = (@annual_rate / 365.0) * calculate_days_between(previous_date, date)
         previous_date = date
@@ -339,7 +342,9 @@ module Amortizy
     # payment date to prevent bank-day adjustments from compounding drift.
     def regular_payment_dates
       @regular_payment_dates ||= begin
-        monthly_target = first_payment_date
+        # A separate fee takes the first period, so regular payments start a
+        # month after the fee's (unadjusted) target date.
+        monthly_target = separate_fee_payment? ? advance_by_month(first_payment_date) : first_payment_date
         previous_date = first_regular_period_start
         Array.new(total_payments) do
           if @frequency == :monthly
@@ -442,7 +447,6 @@ module Amortizy
           payment_type: 'Additional Fee Payment',
           days_in_period: 0
         }
-        previous_payment_date = payment_date
       end
 
       additional_fee_per_payment = @additional_fee_treatment == :distributed ? (@additional_fee / num) : 0.0

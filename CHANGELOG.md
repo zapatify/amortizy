@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.2] - 2026-10-21
+
+### Fixed
+- `additional_fee_treatment: :separate_payment` no longer gives the borrower an interest-free period (#13). Interest accrues from funding, so the first regular payment includes the fee period's interest, on every frequency. Precomputed interest also counts the fee period
+- Monthly loans with a separate fee now put payment 1 one month after the fee instead of on the fee date, matching the other frequencies. These loans now mature one month later (e.g. `term_months: 12` ends in month 13)
+
 ## [3.1.1] - 2026-10-21
 
 ### Fixed
