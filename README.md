@@ -63,9 +63,9 @@ schedule.generate
 
 # Access data programmatically
 schedule.summary          # => { start_date:, end_date:, principal:, total_payments:, ... }
-schedule.payment_amount   # => 8791.91
-schedule.total_interest   # => 5474.89
-schedule.total_paid       # => 105474.89
+schedule.payment_amount   # => 8789.68
+schedule.total_interest   # => 5476.15
+schedule.total_paid       # => 105476.15
 schedule.end_date         # => #<Date: 2027-01-15>
 
 # Get the full schedule as an array of hashes
@@ -160,13 +160,13 @@ Returns a frozen array of payment hashes. Each hash contains:
 {
   payment_number: 1,
   date: #<Date: 2026-02-15>,
-  principal_payment: 7942.59,
+  principal_payment: 7940.36,
   interest_payment: 849.32,
   additional_fee_payment: 0.0,
-  total_payment: 8791.91,
-  principal_balance: 92057.41,
+  total_payment: 8789.68,
+  principal_balance: 92059.64,
   accrued_interest: 849.32,
-  total_balance: 92906.72,
+  total_balance: 92908.95,
   payment_type: "Regular Payment",
   days_in_period: 31
 }
@@ -188,10 +188,10 @@ Returns a hash with loan totals:
   total_payments: 12,
   frequency: :monthly,
   annual_rate: 10.0,
-  payment_amount: 8791.91,
+  payment_amount: 8789.68,
   balloon_amount: 0.0,
-  total_interest: 5474.89,
-  total_paid: 105474.89
+  total_interest: 5476.15,
+  total_paid: 105476.15
 }
 ```
 
@@ -410,9 +410,9 @@ schedule = Amortizy::AmortizationSchedule.new(
 disclosure = Amortizy::Disclosure.new(schedule)
 
 disclosure.apr                   # => 13.6 (Reg Z actuarial method, 10 bps precision)
-disclosure.finance_charge        # => 11119.65
+disclosure.finance_charge        # => 11123.13
 disclosure.amount_financed       # => 49500.0
-disclosure.total_payment_amount  # => 60619.65
+disclosure.total_payment_amount  # => 60623.13
 disclosure.recipient_funds       # => 49500.0
 disclosure.term_display          # => "3 years, 0.03 months"
 disclosure.average_monthly_cost  # => nil (monthly frequency)
@@ -446,14 +446,14 @@ disclosure.prepayment
 ```ruby
 # Raw values
 disclosure.to_h
-# => { amount_financed: 49500.0, apr: 13.6, finance_charge: 11119.65, ... }
+# => { amount_financed: 49500.0, apr: 13.6, finance_charge: 11123.13, ... }
 
 # With regulation-correct labels (per CA SB 1235 section 910)
 disclosure.to_labeled_h
 # => {
 #   amount_financed: { label: "Funding Provided", value: 49500.0 },
 #   apr: { label: "Annual Percentage Rate (APR)", value: 13.6 },
-#   finance_charge: { label: "Finance Charge", value: 11119.65 },
+#   finance_charge: { label: "Finance Charge", value: 11123.13 },
 #   ...
 # }
 ```
