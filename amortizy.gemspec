@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email = ['rzapata@gmail.com']
 
   spec.summary = 'A gem to generate amortization schedules'
-  spec.description = 'Generate loan amortization schedules with monthly, bi-weekly, weekly, or daily payments. Supports grace periods, interest-only payments, federal bank holidays, and multiple interest calculation methods.'
+  spec.description = 'Generate loan amortization schedules with monthly, bi-weekly, weekly, or daily payments. Supports grace periods, interest-only payments, balloon payments, federal bank holidays, and multiple interest calculation methods.'
   spec.homepage = 'https://github.com/zapatify/amortizy'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.3.0'
