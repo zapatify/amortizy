@@ -393,6 +393,8 @@ The `Disclosure` class wraps an existing `AmortizationSchedule` and computes nin
 
 **Key assumption:** The origination fee is treated as a prepaid finance charge (deducted from amount financed, included in finance charge). This is the standard treatment for commercial lending.
 
+**Known issue:** `AmortizationSchedule` adds the origination fee to the balance the borrower repays, and `Disclosure` also deducts it from the amount financed, so the fee is counted twice. Until this is resolved, the amount financed is understated by the fee and the finance charge and APR are overstated ([#11](https://github.com/zapatify/amortizy/issues/11)). The example figures below reflect the current behavior.
+
 ### Basic Usage
 
 ```ruby

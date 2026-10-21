@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README example outputs now match what the gem returns (Quick Start, `#schedule`, `#summary`, disclosure APR and term)
 - README no longer documents an `amortizy` command-line tool, which the gem has never shipped
 - The packaged gem no longer includes internal planning notes (`tasks/`)
+- README notes the known origination-fee double count in disclosures (#11) and the Saturday holiday issue (#8)
 
 ## [3.1.0] - 2026-10-21
 
