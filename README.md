@@ -240,6 +240,9 @@ Interest accrues daily on the remaining principal balance. As you pay down the p
 
 **Formula:** Daily interest = (Principal Balance x Annual Rate) / 365
 
+The level payment is sized on the actual number of days in each scheduled period (after bank-day
+adjustments), so the final payment equals the regular payment and the schedule runs its full term.
+
 **Best for:** Traditional amortizing loans, consumer loans
 
 ### Precomputed Interest (`:precomputed`)

@@ -260,21 +260,68 @@ module Amortizy
           principal_payment_portion + interest_portion
         end
       else
-        days_per_period = calculate_average_days_per_period
-        period_rate = (@annual_rate / 365.0) * days_per_period
-
-        base_payment = if period_rate.zero?
-                         effective_principal / principal_payments
-                       else
-                         effective_principal * (period_rate * ((1 + period_rate)**principal_payments)) /
-                           (((1 + period_rate)**principal_payments) - 1)
-                       end
+        base_payment = level_payment
 
         if @additional_fee_treatment == :distributed
           base_payment + (@additional_fee / num)
         else
           base_payment
         end
+      end
+    end
+
+    # The level payment that pays the balance to zero when interest is charged on
+    # each period's actual days. Interest-only periods leave the balance unchanged,
+    # so only the amortizing periods count. Each period grows the balance by
+    # (1 + r_k), which makes the final balance linear in the payment:
+    #
+    #   payment = balance * prod(1 + r_k) / sum_k prod_{i>k}(1 + r_i)
+    def level_payment
+      growth = 1.0
+      payments_value = 0.0
+      amortizing_period_rates.reverse_each do |rate|
+        payments_value += growth
+        growth *= 1 + rate
+      end
+      effective_principal * growth / payments_value
+    end
+
+    def amortizing_period_rates
+      previous_date = first_regular_period_start
+      rates = regular_payment_dates.map do |date|
+        rate = (@annual_rate / 365.0) * calculate_days_between(previous_date, date)
+        previous_date = date
+        rate
+      end
+      rates.drop(@interest_only_periods)
+    end
+
+    def separate_fee_payment?
+      @additional_fee_treatment == :separate_payment && @additional_fee.positive?
+    end
+
+    def separate_fee_date
+      next_payment_date(first_payment_date)
+    end
+
+    def first_regular_period_start
+      separate_fee_payment? ? separate_fee_date : first_payment_date
+    end
+
+    # For monthly frequency, track the target date separately from the actual
+    # payment date to prevent bank-day adjustments from compounding drift.
+    def regular_payment_dates
+      @regular_payment_dates ||= begin
+        monthly_target = first_payment_date
+        previous_date = first_regular_period_start
+        Array.new(total_payments) do
+          if @frequency == :monthly
+            monthly_target = advance_by_month(monthly_target)
+            previous_date = next_bank_day(monthly_target)
+          else
+            previous_date = next_payment_date(previous_date)
+          end
+        end.freeze
       end
     end
 
@@ -330,7 +377,6 @@ module Amortizy
       payment_amount = calculate_payment
       balance = effective_principal
       accrued_interest = 0.0
-      payment_date = first_payment_date
       previous_payment_date = first_payment_date
       payment_number = 0
       num = total_payments
@@ -354,8 +400,8 @@ module Amortizy
         }
       end
 
-      if @additional_fee_treatment == :separate_payment && @additional_fee.positive?
-        payment_date = next_payment_date(payment_date)
+      if separate_fee_payment?
+        payment_date = separate_fee_date
         schedule_data << {
           payment_number: 0,
           date: payment_date,
@@ -375,19 +421,9 @@ module Amortizy
       additional_fee_per_payment = @additional_fee_treatment == :distributed ? (@additional_fee / num) : 0.0
       precomputed_interest = @interest_method == :precomputed ? precomputed_interest_per_payment : 0.0
 
-      # For monthly frequency, track the target date separately from the actual
-      # payment date to prevent bank-day adjustments from compounding drift.
-      monthly_target = @frequency == :monthly ? first_payment_date : nil
-
       while payment_number < num && balance > 0.01
+        payment_date = regular_payment_dates[payment_number]
         payment_number += 1
-
-        if @frequency == :monthly && monthly_target
-          monthly_target = advance_by_month(monthly_target)
-          payment_date = next_bank_day(monthly_target)
-        else
-          payment_date = next_payment_date(previous_payment_date)
-        end
 
         days_in_period = calculate_days_between(previous_payment_date, payment_date)
 
